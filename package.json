@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon",
-    "build": "npx tsc",
+    "build": "echo 'Starting TypeScript build...' && npx tsc --verbose",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
     "lint": "eslint src/**/*.ts",

@@ -31,8 +31,7 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/config/*": ["config/*"]
+      "@/*": ["src/*"]
     }
   },
   "include": [
