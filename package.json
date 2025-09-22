@@ -6,14 +6,14 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon",
-    "build": "echo 'Starting TypeScript build...' && npx tsc --verbose",
+    "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
     "test": "echo \"Tests not implemented yet\"",
-    "prestart": "npm run build",
+
     "migrate": "node dist/scripts/migrate.js",
     "seed": "node dist/scripts/seed.js",
     "health-check": "node dist/scripts/health-check.js"
@@ -77,7 +77,7 @@
     "ts-node": "^10.9.1"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=20.10.0",
+    "npm": ">=10.0.0"
   }
 }

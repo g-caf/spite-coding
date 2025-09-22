@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for production optimized builds
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -23,7 +23,7 @@ COPY knexfile.js ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -38,7 +38,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
