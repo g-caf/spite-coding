@@ -74,12 +74,12 @@ class ExpenseApp {
 
   private initializeRoutes(): void {
     // Health check endpoint (before routes)
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', (_, res) => {
       res.status(200).json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        version: process.env.npm_package_version || '1.0.0'
+        version: process.env['npm_package_version'] || '1.0.0'
       });
     });
 
@@ -99,11 +99,13 @@ class ExpenseApp {
     this.app.use(errorHandler);
   }
 
-  public listen(): void {
-    this.app.listen(appConfig.port, appConfig.host, () => {
+  public listen(): any {
+    const server = this.app.listen(appConfig.port, appConfig.host, () => {
       logger.info(`Server running on http://${appConfig.host}:${appConfig.port}`);
       logger.info(`Environment: ${appConfig.nodeEnv}`);
     });
+
+    return server;
   }
 }
 

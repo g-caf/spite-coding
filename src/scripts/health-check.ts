@@ -2,16 +2,19 @@
 
 import { config } from 'dotenv';
 import http from 'http';
-import Redis from 'redis';
-import knex from 'knex';
-import knexfile from '../../knexfile.js';
+import { Knex } from 'knex';
 
 // Load environment variables
 config();
 
-const PORT = process.env.PORT || 3000;
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const environment = process.env.NODE_ENV || 'development';
+// Import dependencies dynamically to avoid TypeScript issues
+const Redis = require('redis');
+const knexfile = require('../../knexfile.js') as { [key: string]: Knex.Config };
+const knex = require('knex') as (config: Knex.Config) => Knex;
+
+const PORT = process.env['PORT'] || 3000;
+const REDIS_URL = process.env['REDIS_URL'] || 'redis://localhost:6379';
+const environment = process.env['NODE_ENV'] || 'development';
 
 interface HealthStatus {
   status: 'healthy' | 'unhealthy';
@@ -28,7 +31,11 @@ interface HealthStatus {
 async function checkDatabase(): Promise<'connected' | 'disconnected'> {
   let db: any = null;
   try {
-    db = knex(knexfile[environment]);
+    const dbConfig = knexfile[environment];
+    if (!dbConfig) {
+      throw new Error(`No database configuration found for environment: ${environment}`);
+    }
+    db = knex(dbConfig);
     await db.raw('SELECT 1');
     return 'connected';
   } catch (error) {
@@ -76,8 +83,6 @@ async function checkServer(): Promise<'running' | 'stopped'> {
 }
 
 async function getHealthStatus(): Promise<HealthStatus> {
-  const startTime = Date.now();
-  
   const [database, redis, server] = await Promise.all([
     checkDatabase(),
     checkRedis(),
@@ -93,7 +98,7 @@ async function getHealthStatus(): Promise<HealthStatus> {
     status: allHealthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     services,
-    version: process.env.npm_package_version || '1.0.0',
+    version: process.env['npm_package_version'] || '1.0.0',
     uptime: process.uptime()
   };
 }

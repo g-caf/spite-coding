@@ -14,16 +14,34 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
-});
+let server: any;
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
-});
+const gracefulShutdown = (signal: string) => {
+  logger.info(`${signal} received, shutting down gracefully`);
+  
+  if (server) {
+    server.close((err: Error) => {
+      if (err) {
+        logger.error('Error during server shutdown:', err);
+        process.exit(1);
+      }
+      logger.info('Server closed successfully');
+      process.exit(0);
+    });
+
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      logger.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  } else {
+    process.exit(0);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Start the server
 const app = new ExpenseApp();
-app.listen();
+server = app.listen();
