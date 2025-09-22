@@ -2,9 +2,9 @@
   "name": "expense-platform",
   "version": "1.0.0",
   "description": "Enterprise-grade expense management platform - Airbase replacement",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "dev": "nodemon",
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -14,9 +14,9 @@
     "type-check": "tsc --noEmit",
     "test": "echo \"Tests not implemented yet\"",
 
-    "migrate": "node dist/scripts/migrate.js",
-    "seed": "node dist/scripts/seed.js",
-    "health-check": "node dist/scripts/health-check.js"
+    "migrate": "node dist/src/scripts/migrate.js",
+    "seed": "node dist/src/scripts/seed.js",
+    "health-check": "node dist/src/scripts/health-check.js"
   },
   "keywords": [
     "expense",
