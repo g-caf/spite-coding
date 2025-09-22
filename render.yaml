@@ -1,0 +1,41 @@
+databases:
+  - name: expense-platform-db
+    databaseName: expense_platform
+    user: expense_user
+    plan: starter
+
+services:
+  - type: redis
+    name: expense-platform-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+  - type: web
+    name: expense-platform
+    env: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expense-platform-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: expense-platform-redis
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_ENCRYPTION_KEY
+        generateValue: true
+      - key: WEBHOOK_SECRET
+        generateValue: true
+    domains:
+      - expense-platform.onrender.com

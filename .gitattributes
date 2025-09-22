@@ -1,0 +1,48 @@
+# Set default line endings
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+*.js text
+*.ts text
+*.json text
+*.md text
+*.yml text
+*.yaml text
+*.xml text
+*.html text
+*.css text
+*.scss text
+*.sql text
+
+# Explicitly declare binary files you want to always be binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.tgz binary
+
+# Declare files that will always have LF line endings on checkout
+*.sh text eol=lf
+
+# Denote all files that are truly binary and should not be modified
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# TypeScript language attributes
+*.ts linguist-language=TypeScript
+*.js linguist-language=JavaScript
+
+# Documentation
+*.md linguist-documentation
+docs/** linguist-documentation
+
+# Config files
+*.json linguist-language=JSON
+*.yml linguist-language=YAML
+*.yaml linguist-language=YAML

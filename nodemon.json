@@ -1,0 +1,9 @@
+{
+  "watch": ["src", "config"],
+  "ext": "ts,json",
+  "ignore": ["src/**/*.test.ts", "node_modules/**/*"],
+  "exec": "ts-node src/server.ts",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
