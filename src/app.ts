@@ -6,6 +6,27 @@ import knex from 'knex';
 import { Products } from 'plaid';
 
 import { PlaidIntegration } from './services/plaid';
+
+// Safe route mounting function
+function safeUseRouter(app: any, path: string, router: any, name: string) {
+  try {
+    if (typeof router === 'function') {
+      app.use(path, router);
+      logger.info(`Mounted route: ${name} at ${path}`);
+    } else if (router && typeof router.default === 'function') {
+      app.use(path, router.default);
+      logger.info(`Mounted route: ${name} at ${path} (via default export)`);
+    } else {
+      logger.warn(`Skipping invalid route: ${name} - not a function`, { 
+        type: typeof router, 
+        keys: router ? Object.keys(router) : [] 
+      });
+    }
+  } catch (error: any) {
+    logger.warn(`Failed to mount route: ${name}`, { error: error.message, path });
+  }
+}
+
 import { TransactionMatcher } from './services/matching/TransactionMatcher';
 import plaidRoutes, { initializePlaidRoutes } from './routes/plaid';
 
@@ -253,9 +274,32 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    // Run database migrations
-    logger.info('Running database migrations...');
-    await db.migrate.latest();
+    // Check bypass flags
+    const asBool = (v?: string) => /^(1|true|yes)$/i.test(String(v || ''));
+    const SKIP_MIGRATIONS = asBool(process.env.SKIP_MIGRATIONS);
+    const ALLOW_START_WITHOUT_DB = asBool(process.env.ALLOW_START_WITHOUT_DB);
+    
+    logger.info('Starting server with flags', { SKIP_MIGRATIONS, ALLOW_START_WITHOUT_DB });
+    
+    // Run database migrations (with bypass)
+    if (SKIP_MIGRATIONS) {
+      logger.info('Skipping database migrations due to SKIP_MIGRATIONS=true');
+    } else {
+      try {
+        logger.info('Running database migrations...');
+        await db.migrate.latest();
+        logger.info('Database migrations completed successfully');
+      } catch (migrationError: any) {
+        if (ALLOW_START_WITHOUT_DB) {
+          logger.warn('Migration failed but ALLOW_START_WITHOUT_DB=true, continuing', { 
+            error: migrationError.message, 
+            stack: migrationError.stack 
+          });
+        } else {
+          throw migrationError;
+        }
+      }
+    }
     
     // Start Plaid integration
     logger.info('Starting Plaid integration...');
