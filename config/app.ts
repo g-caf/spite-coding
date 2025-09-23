@@ -16,7 +16,7 @@ export interface AppConfig {
 export const appConfig: AppConfig = {
   nodeEnv: process.env['NODE_ENV'] || 'development',
   port: parseInt(process.env['PORT'] || '3000', 10),
-  host: process.env['HOST'] || (process.env['NODE_ENV'] === 'production' ? '0.0.0.0' : 'localhost'),
+  host: process.env['HOST'] || '0.0.0.0',
   sessionSecret: process.env['SESSION_SECRET'] || 'fallback-session-secret-change-in-production',
   cookieSecret: process.env['COOKIE_SECRET'] || process.env['SESSION_SECRET'] || 'fallback-cookie-secret-change-in-production',
   allowedOrigins: process.env['ALLOWED_ORIGINS']?.split(',') || ['http://localhost:3000'],
