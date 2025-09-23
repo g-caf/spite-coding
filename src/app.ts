@@ -1,127 +1,282 @@
-import express, { Application } from 'express';
-import session from 'express-session';
-import cookieParser from 'cookie-parser';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import winston from 'winston';
+import knex from 'knex';
+import { Products } from 'plaid';
+
+import { PlaidIntegration } from './services/plaid';
+import { TransactionMatcher } from './services/matching/TransactionMatcher';
+import plaidRoutes, { initializePlaidRoutes } from './routes/plaid';
+
+// Configure logger
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.File({ 
+      filename: 'logs/app.log',
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 5
+    })
+  ]
+});
+
+// Database configuration
+const db = knex({
+  client: 'postgresql',
+  connection: {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'expense_platform'
+  },
+  pool: {
+    min: 2,
+    max: 20,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000
+  },
+  migrations: {
+    directory: './database/migrations',
+    tableName: 'knex_migrations'
+  },
+  seeds: {
+    directory: './database/seeds'
+  }
+});
+
+// Initialize Plaid configuration
+const plaidConfig = {
+  clientId: process.env.PLAID_CLIENT_ID!,
+  secret: process.env.PLAID_SECRET!,
+  environment: (process.env.PLAID_ENVIRONMENT || 'sandbox') as 'sandbox' | 'development' | 'production',
+  products: [Products.Transactions, Products.Auth] as Products[],
+  countryCodes: ['US', 'CA'],
+  webhookUrl: process.env.PLAID_WEBHOOK_URL || `${process.env.BASE_URL}/webhook/plaid`,
+  webhookSecret: process.env.PLAID_WEBHOOK_SECRET!
+};
+
+const encryptionKey = process.env.ENCRYPTION_KEY!;
+
+// Validate required environment variables
+const requiredVars = [
+  'PLAID_CLIENT_ID',
+  'PLAID_SECRET', 
+  'PLAID_WEBHOOK_SECRET',
+  'ENCRYPTION_KEY',
+  'SESSION_SECRET',
+  'JWT_SECRET'
+];
+
+const missingVars = requiredVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+  logger.error('Missing required environment variables', { missing: missingVars });
+  process.exit(1);
+}
+
+// Initialize services
+const plaidIntegration = new PlaidIntegration(db, logger, plaidConfig, encryptionKey);
+const transactionMatcher = new TransactionMatcher(db, logger);
+
+// Create Express app
+const app = express();
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false // Configure as needed
+}));
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  credentials: true
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging
+app.use((req, res, next) => {
+  logger.info('HTTP Request', {
+    method: req.method,
+    url: req.url,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip
+  });
+  next();
+});
+
+// Serve static files and set up view engine
 import path from 'path';
-import { appConfig } from '../config/app';
-import logger from '../config/logger';
-import {
-  securityHeaders,
-  rateLimiter,
-  corsMiddleware,
-  requestLogger,
-  errorHandler,
-} from './middleware/security';
-import routes from './routes';
+app.use('/static', express.static(path.join(__dirname, '../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../views'));
 
-class ExpenseApp {
-  public app: Application;
+// Add database and services to request object
+app.use((req: any, res, next) => {
+  req.db = db;
+  req.logger = logger;
+  req.plaidIntegration = plaidIntegration;
+  req.transactionMatcher = transactionMatcher;
+  next();
+});
 
-  constructor() {
-    this.app = express();
-    this.initializeMiddleware();
-    this.initializeRoutes();
-    this.initializeErrorHandling();
-  }
+// Initialize Plaid routes
+initializePlaidRoutes(
+  plaidIntegration.plaidService,
+  plaidIntegration.webhookHandler,
+  logger
+);
 
-  private initializeMiddleware(): void {
-    // Security middleware (applied first)
-    this.app.use(securityHeaders);
-    this.app.use(corsMiddleware);
-    this.app.use(rateLimiter);
+// API Routes
+app.use('/api/plaid', plaidRoutes);
 
-    // Basic Express middleware
-    this.app.use(express.json({ 
-      limit: '10mb',
-      strict: true,
-    }));
-    this.app.use(express.urlencoded({ 
-      extended: true, 
-      limit: '10mb' 
-    }));
+// Add new integrated routes (with error handling to prevent breaking existing app)
+try {
+  // Import and mount inbox routes
+  const inboxRoutes = require('./routes/inbox/inboxRoutes');
+  app.use('/inbox', inboxRoutes);
+  
+  // Import and mount receipt routes
+  const receiptRoutes = require('./routes/receipts');
+  app.use('/api/receipts', receiptRoutes);
+  
+  // Import and mount matching routes
+  const matchingRoutes = require('./routes/matching');
+  app.use('/api/matching', matchingRoutes);
+  
+  logger.info('Successfully loaded new integrated routes');
+} catch (error) {
+  logger.warn('Failed to load some new routes, continuing with core functionality', { error: (error as Error).message });
+}
+
+// Health check endpoint
+app.get('/health', async (req: any, res) => {
+  try {
+    // Check database connection
+    await req.db.raw('SELECT 1');
     
-    // Cookie parsing with security
-    this.app.use(cookieParser(appConfig.cookieSecret));
-
-    // Session configuration
-    this.app.use(session({
-      secret: appConfig.sessionSecret,
-      name: 'expense.sid',
-      resave: false,
-      saveUninitialized: false,
-      rolling: true,
-      cookie: {
-        secure: appConfig.nodeEnv === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'strict',
-      },
-    }));
-
-    // Static files
-    this.app.use(express.static(path.join(__dirname, '../public'), {
-      maxAge: appConfig.nodeEnv === 'production' ? '7d' : '0',
-      etag: true,
-      lastModified: true,
-    }));
-
-    // View engine setup
-    this.app.set('view engine', 'ejs');
-    this.app.set('views', path.join(__dirname, '../views'));
-
-    // Request logging
-    this.app.use(requestLogger);
-  }
-
-  private initializeRoutes(): void {
-    // Root route
-    this.app.get('/', (_, res) => {
-      res.json({
-        name: 'Expense Platform API',
-        version: '1.0.0',
-        description: 'Enterprise expense management platform - Airbase alternative',
-        endpoints: {
-          api: '/api',
-          health: '/health',
-          docs: '/api/docs'
-        },
-        status: 'online'
-      });
-    });
-
-    // Health check endpoint (before routes)
-    this.app.get('/health', (_, res) => {
-      res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        version: process.env['npm_package_version'] || '1.0.0'
-      });
-    });
-
-    this.app.use('/api', routes);
+    // Check Plaid integration status
+    const plaidStatus = await plaidIntegration.getIntegrationStatus();
     
-    // Catch 404 and forward to error handler
-    this.app.use('*', (req, res) => {
-      logger.warn(`404 - Route not found: ${req.originalUrl}`, { ip: req.ip });
-      res.status(404).json({
-        error: 'Route not found',
-        path: req.originalUrl,
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '1.0.0',
+      database: 'connected',
+      plaid: plaidStatus
+    });
+  } catch (error) {
+    logger.error('Health check failed', { error: (error as Error).message });
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: (error as Error).message
+    });
+  }
+});
+
+// Error handling middleware
+app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error', {
+    error: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method
+  });
+
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    path: req.originalUrl
+  });
+});
+
+// Graceful shutdown
+const gracefulShutdown = async (signal: string) => {
+  logger.info('Shutting down gracefully', { signal });
+  
+  try {
+    // Stop Plaid integration
+    await plaidIntegration.stop();
+    
+    // Close database connections
+    await db.destroy();
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during shutdown', { error: (error as Error).message });
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Unhandled promise rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection', { reason, promise });
+});
+
+// Uncaught exception handler
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+  process.exit(1);
+});
+
+const PORT = process.env.PORT || 3001;
+
+async function startServer() {
+  try {
+    // Run database migrations
+    logger.info('Running database migrations...');
+    await db.migrate.latest();
+    
+    // Start Plaid integration
+    logger.info('Starting Plaid integration...');
+    await plaidIntegration.start();
+    
+    // Start server
+    app.listen(PORT, () => {
+      logger.info('Server started successfully', { 
+        port: PORT, 
+        environment: process.env.NODE_ENV || 'development',
+        plaidEnvironment: plaidConfig.environment
       });
     });
-  }
-
-  private initializeErrorHandling(): void {
-    this.app.use(errorHandler);
-  }
-
-  public listen(): any {
-    const server = this.app.listen(appConfig.port, appConfig.host, () => {
-      logger.info(`Server running on http://${appConfig.host}:${appConfig.port}`);
-      logger.info(`Environment: ${appConfig.nodeEnv}`);
-    });
-
-    return server;
+    
+  } catch (error) {
+    logger.error('Failed to start server', { error: (error as Error).message });
+    process.exit(1);
   }
 }
 
-export default ExpenseApp;
+// Start the server
+startServer();
+
+export default app;

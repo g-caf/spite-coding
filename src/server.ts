@@ -1,5 +1,24 @@
-import ExpenseApp from './app';
-import logger from '../config/logger';
+// Note: app.ts handles server startup, this file is not used in the main flow
+// But we keep it for compatibility
+
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
+  ]
+});
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
@@ -13,35 +32,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   process.exit(1);
 });
 
-// Graceful shutdown
-let server: any;
+// Since app.ts handles the server startup, we just need to reference it
+require('./app');
 
-const gracefulShutdown = (signal: string) => {
-  logger.info(`${signal} received, shutting down gracefully`);
-  
-  if (server) {
-    server.close((err: Error) => {
-      if (err) {
-        logger.error('Error during server shutdown:', err);
-        process.exit(1);
-      }
-      logger.info('Server closed successfully');
-      process.exit(0);
-    });
-
-    // Force shutdown after 10 seconds
-    setTimeout(() => {
-      logger.error('Could not close connections in time, forcefully shutting down');
-      process.exit(1);
-    }, 10000);
-  } else {
-    process.exit(0);
-  }
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Start the server
-const app = new ExpenseApp();
-server = app.listen();
+export {};

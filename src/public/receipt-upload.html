@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Upload - Expense Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #86868b;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .drop-zone {
+            border: 2px dashed #d1d1d6;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            border-color: #007AFF;
+            background: #f0f8ff;
+        }
+
+        .drop-zone-content {
+            pointer-events: none;
+        }
+
+        .drop-icon {
+            font-size: 48px;
+            color: #d1d1d6;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone.dragover .drop-icon {
+            color: #007AFF;
+        }
+
+        .drop-zone h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #1d1d1f;
+        }
+
+        .drop-zone p {
+            color: #86868b;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: #0056b3;
+        }
+
+        .upload-btn:disabled {
+            background: #d1d1d6;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #e5e5e7;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        .file-details h4 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .file-details p {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+
+        .file-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-pending { background: #ff9500; }
+        .status-processing { background: #007AFF; }
+        .status-success { background: #34c759; }
+        .status-error { background: #ff3b30; }
+        .status-duplicate { background: #ff9500; }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #ff3b30;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .remove-btn:hover {
+            background: #ffe0e0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e5e5e7;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #007AFF;
+            transition: width 0.3s ease;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+        }
+
+        .alert-error {
+            background: #ffe0e0;
+            color: #d70015;
+            border: 1px solid #ffb3b3;
+        }
+
+        .alert-success {
+            background: #e0f5e0;
+            color: #1b5e20;
+            border: 1px solid #b3d9b3;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .supported-formats {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .supported-formats h4 {
+            margin-bottom: 12px;
+            color: #1d1d1f;
+        }
+
+        .format-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .format-tag {
+            background: white;
+            border: 1px solid #d1d1d6;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            color: #86868b;
+        }
+
+        .upload-options {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group label {
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+
+        .option-group input,
+        .option-group select {
+            padding: 8px 12px;
+            border: 1px solid #d1d1d6;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+        }
+
+        .option-group input:focus,
+        .option-group select:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .receipt-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-top: 30px;
+            display: none;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .preview-item {
+            text-align: center;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-width: 200px;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #d1d1d6;
+            margin-bottom: 12px;
+        }
+
+        .preview-name {
+            font-size: 0.875rem;
+            color: #1d1d1f;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .preview-size {
+            font-size: 0.75rem;
+            color: #86868b;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .upload-section {
+                padding: 20px;
+            }
+            
+            .drop-zone {
+                padding: 40px 20px;
+            }
+            
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Upload Receipts</h1>
+            <p>Drag and drop your receipt images or PDFs, or click to browse</p>
+        </div>
+
+        <div id="alerts"></div>
+
+        <div class="upload-options">
+            <h3 style="margin-bottom: 20px;">Upload Options</h3>
+            <div class="options-grid">
+                <div class="option-group">
+                    <label for="category">Category</label>
+                    <select id="category">
+                        <option value="">Auto-detect</option>
+                        <option value="meals">Meals & Entertainment</option>
+                        <option value="office">Office Supplies</option>
+                        <option value="travel">Travel</option>
+                        <option value="equipment">Equipment</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="option-group">
+                    <label for="tags">Tags (comma-separated)</label>
+                    <input type="text" id="tags" placeholder="e.g., client-meeting, urgent">
+                </div>
+                
+                <div class="option-group">
+                    <label for="notes">Notes</label>
+                    <input type="text" id="notes" placeholder="Optional notes">
+                </div>
+                
+                <div class="option-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="auto-match">
+                        <label for="auto-match">Auto-match with transactions</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                    <div class="drop-icon">📄</div>
+                    <h3>Drop your receipts here</h3>
+                    <p>Or click to select files</p>
+                    <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose Files
+                    </button>
+                </div>
+            </div>
+            
+            <input type="file" id="fileInput" class="file-input" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.tiff,.bmp">
+            
+            <div id="fileList" class="file-list"></div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="button" id="uploadAll" class="upload-btn" style="padding: 16px 32px; font-size: 1.1rem;" disabled>
+                    Upload All Files
+                </button>
+            </div>
+        </div>
+
+        <div class="supported-formats">
+            <h4>Supported File Formats</h4>
+            <div class="format-list">
+                <span class="format-tag">JPEG</span>
+                <span class="format-tag">PNG</span>
+                <span class="format-tag">GIF</span>
+                <span class="format-tag">PDF</span>
+                <span class="format-tag">TIFF</span>
+                <span class="format-tag">BMP</span>
+            </div>
+            <p style="margin-top: 12px; font-size: 0.875rem; color: #86868b;">
+                Maximum file size: 50MB for PDFs, 10MB for images. Up to 10 files per upload.
+            </p>
+        </div>
+
+        <div id="receiptPreview" class="receipt-preview">
+            <h3 style="margin-bottom: 20px;">Receipt Preview</h3>
+            <div id="previewGrid" class="preview-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        class ReceiptUploader {
+            constructor() {
+                this.files = [];
+                this.maxFiles = 10;
+                this.maxFileSize = {
+                    pdf: 50 * 1024 * 1024, // 50MB
+                    image: 10 * 1024 * 1024 // 10MB
+                };
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                this.dropZone = document.getElementById('dropZone');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileList = document.getElementById('fileList');
+                this.uploadAllBtn = document.getElementById('uploadAll');
+                this.alertsContainer = document.getElementById('alerts');
+                this.previewContainer = document.getElementById('receiptPreview');
+                this.previewGrid = document.getElementById('previewGrid');
+            }
+
+            bindEvents() {
+                // Drop zone events
+                this.dropZone.addEventListener('click', () => {
+                    this.fileInput.click();
+                });
+
+                this.dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.dropZone.classList.add('dragover');
+                });
+
+                this.dropZone.addEventListener('dragleave', () => {
+                    this.dropZone.classList.remove('dragover');
+                });
+
+                this.dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.dropZone.classList.remove('dragover');
+                    this.handleFiles(e.dataTransfer.files);
+                });
+
+                // File input change
+                this.fileInput.addEventListener('change', (e) => {
+                    this.handleFiles(e.target.files);
+                });
+
+                // Upload all button
+                this.uploadAllBtn.addEventListener('click', () => {
+                    this.uploadFiles();
+                });
+            }
+
+            handleFiles(fileList) {
+                const newFiles = Array.from(fileList);
+                
+                // Check file count limit
+                if (this.files.length + newFiles.length > this.maxFiles) {
+                    this.showAlert('error', `Maximum ${this.maxFiles} files allowed`);
+                    return;
+                }
+
+                // Validate and add files
+                for (const file of newFiles) {
+                    if (this.validateFile(file)) {
+                        const fileObj = {
+                            id: Date.now() + Math.random(),
+                            file: file,
+                            status: 'pending',
+                            progress: 0,
+                            error: null
+                        };
+                        this.files.push(fileObj);
+                    }
+                }
+
+                this.renderFileList();
+                this.renderPreview();
+                this.updateUploadButton();
+            }
+
+            validateFile(file) {
+                const allowedTypes = [
+                    'image/jpeg', 'image/png', 'image/gif', 
+                    'image/tiff', 'image/bmp', 'application/pdf'
+                ];
+
+                if (!allowedTypes.includes(file.type)) {
+                    this.showAlert('error', `Unsupported file type: ${file.name}`);
+                    return false;
+                }
+
+                const maxSize = file.type === 'application/pdf' 
+                    ? this.maxFileSize.pdf 
+                    : this.maxFileSize.image;
+
+                if (file.size > maxSize) {
+                    const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+                    this.showAlert('error', `File too large: ${file.name} (max ${maxSizeMB}MB)`);
+                    return false;
+                }
+
+                return true;
+            }
+
+            renderFileList() {
+                if (this.files.length === 0) {
+                    this.fileList.innerHTML = '';
+                    return;
+                }
+
+                const html = this.files.map(fileObj => `
+                    <div class="file-item" data-id="${fileObj.id}">
+                        <div class="file-info">
+                            <div class="file-icon">
+                                ${this.getFileIcon(fileObj.file.type)}
+                            </div>
+                            <div class="file-details">
+                                <h4>${fileObj.file.name}</h4>
+                                <p>${this.formatFileSize(fileObj.file.size)} • ${fileObj.file.type}</p>
+                                ${fileObj.progress > 0 ? `
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${fileObj.progress}%"></div>
+                                    </div>
+                                ` : ''}
+                                ${fileObj.error ? `<p style="color: #ff3b30; font-size: 0.75rem;">${fileObj.error}</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="file-status">
+                            <span class="status-indicator status-${fileObj.status}"></span>
+                            <span>${this.getStatusText(fileObj.status)}</span>
+                            ${fileObj.status === 'pending' ? `
+                                <button class="remove-btn" onclick="uploader.removeFile('${fileObj.id}')">×</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                this.fileList.innerHTML = html;
+            }
+
+            renderPreview() {
+                if (this.files.length === 0) {
+                    this.previewContainer.style.display = 'none';
+                    return;
+                }
+
+                this.previewContainer.style.display = 'block';
+                
+                const html = this.files.map(fileObj => {
+                    const isImage = fileObj.file.type.startsWith('image/');
+                    const previewUrl = isImage ? URL.createObjectURL(fileObj.file) : null;
+
+                    return `
+                        <div class="preview-item">
+                            ${isImage ? `
+                                <img src="${previewUrl}" alt="${fileObj.file.name}" class="preview-image">
+                            ` : `
+                                <div class="preview-image" style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
+                                    <span style="font-size: 2rem;">📄</span>
+                                </div>
+                            `}
+                            <div class="preview-name">${fileObj.file.name}</div>
+                            <div class="preview-size">${this.formatFileSize(fileObj.file.size)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                this.previewGrid.innerHTML = html;
+            }
+
+            removeFile(id) {
+                this.files = this.files.filter(file => file.id !== id);
+                this.renderFileList();
+                this.renderPreview();
+                this.updateUploadButton();
+            }
+
+            updateUploadButton() {
+                const pendingFiles = this.files.filter(file => file.status === 'pending');
+                this.uploadAllBtn.disabled = pendingFiles.length === 0;
+                
+                if (pendingFiles.length > 0) {
+                    this.uploadAllBtn.textContent = `Upload ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}`;
+                } else {
+                    this.uploadAllBtn.textContent = 'Upload All Files';
+                }
+            }
+
+            async uploadFiles() {
+                const pendingFiles = this.files.filter(file => file.status === 'pending');
+                
+                if (pendingFiles.length === 0) return;
+
+                this.uploadAllBtn.disabled = true;
+                this.uploadAllBtn.textContent = 'Uploading...';
+
+                const metadata = this.gatherMetadata();
+
+                for (const fileObj of pendingFiles) {
+                    try {
+                        fileObj.status = 'processing';
+                        this.renderFileList();
+
+                        await this.uploadSingleFile(fileObj, metadata);
+                        
+                        fileObj.status = 'success';
+                        fileObj.progress = 100;
+                        
+                    } catch (error) {
+                        fileObj.status = 'error';
+                        fileObj.error = error.message || 'Upload failed';
+                    }
+                    
+                    this.renderFileList();
+                }
+
+                this.updateUploadButton();
+                
+                const successCount = this.files.filter(f => f.status === 'success').length;
+                const errorCount = this.files.filter(f => f.status === 'error').length;
+                
+                if (successCount > 0) {
+                    this.showAlert('success', `Successfully uploaded ${successCount} receipt${successCount > 1 ? 's' : ''}`);
+                }
+                
+                if (errorCount > 0) {
+                    this.showAlert('error', `${errorCount} upload${errorCount > 1 ? 's' : ''} failed`);
+                }
+            }
+
+            async uploadSingleFile(fileObj, metadata) {
+                const formData = new FormData();
+                formData.append('receipts', fileObj.file);
+                formData.append('metadata', JSON.stringify(metadata));
+
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            fileObj.progress = Math.round((e.loaded / e.total) * 100);
+                            this.renderFileList();
+                        }
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status === 201) {
+                            const response = JSON.parse(xhr.responseText);
+                            resolve(response);
+                        } else {
+                            const error = JSON.parse(xhr.responseText);
+                            reject(new Error(error.error || 'Upload failed'));
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => {
+                        reject(new Error('Network error'));
+                    });
+
+                    xhr.open('POST', '/api/receipts/upload/multiple');
+                    xhr.send(formData);
+                });
+            }
+
+            gatherMetadata() {
+                return {
+                    category: document.getElementById('category').value,
+                    tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
+                    notes: document.getElementById('notes').value,
+                    autoMatch: document.getElementById('auto-match').checked,
+                    uploadedAt: new Date().toISOString()
+                };
+            }
+
+            showAlert(type, message) {
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type}`;
+                alert.textContent = message;
+                
+                this.alertsContainer.appendChild(alert);
+                
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
+            }
+
+            getFileIcon(mimeType) {
+                if (mimeType === 'application/pdf') return '📄';
+                if (mimeType.startsWith('image/')) return '🖼️';
+                return '📎';
+            }
+
+            getStatusText(status) {
+                const statusTexts = {
+                    pending: 'Ready',
+                    processing: 'Uploading...',
+                    success: 'Completed',
+                    error: 'Failed',
+                    duplicate: 'Duplicate'
+                };
+                return statusTexts[status] || status;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // Initialize the uploader when the page loads
+        let uploader;
+        document.addEventListener('DOMContentLoaded', () => {
+            uploader = new ReceiptUploader();
+        });
+    </script>
+</body>
+</html>

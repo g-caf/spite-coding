@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> | Expense Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/inbox.css">
+    <style>
+        .htmx-indicator { opacity: 0; }
+        .htmx-request .htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }
+        .htmx-request.htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Status chips */
+        .status-unmatched { @apply bg-red-100 text-red-800 border-red-200; }
+        .status-categorized { @apply bg-yellow-100 text-yellow-800 border-yellow-200; }
+        .status-approved { @apply bg-green-100 text-green-800 border-green-200; }
+        .status-rejected { @apply bg-gray-100 text-gray-800 border-gray-200; }
+        .status-exported { @apply bg-blue-100 text-blue-800 border-blue-200; }
+
+        /* Keyboard shortcuts */
+        .kbd {
+            @apply inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs font-mono rounded border;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden">
+    <!-- Top Navigation Bar -->
+    <nav class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl font-semibold text-gray-900">Expense Platform</h1>
+                <div class="flex space-x-1 bg-gray-100 rounded-lg p-1">
+                    <a href="/inbox" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md">
+                        <i class="fas fa-inbox mr-2"></i>Inbox
+                    </a>
+                    <a href="/reports" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-chart-bar mr-2"></i>Reports
+                    </a>
+                    <a href="/settings" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <div class="htmx-indicator absolute inset-0 flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    </div>
+                    <i class="fas fa-sync-alt text-gray-400 cursor-pointer hover:text-gray-600"></i>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <img class="h-8 w-8 rounded-full" src="https://ui-avatars.com/api/?name=User&background=3B82F6&color=fff" alt="User">
+                    <span class="text-sm font-medium text-gray-700">User</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex h-[calc(100vh-72px)]">
+        <%- body %>
+    </div>
+
+    <!-- Global Keyboard Shortcuts -->
+    <div class="hidden" id="keyboard-help">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md">
+                <h3 class="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between"><span><kbd class="kbd">J</kbd> / <kbd class="kbd">K</kbd></span><span>Navigate transactions</span></div>
+                    <div class="flex justify-between"><span><kbd class="kbd">E</kbd></span><span>Edit selected transaction</span></div>
+                    <div class="flex justify-between"><span><kbd class="kbd">R</kbd></span><span>Upload receipt</span></div>
+                    <div class="flex justify-between"><span><kbd class="kbd">/</kbd></span><span>Search transactions</span></div>
+                    <div class="flex justify-between"><span><kbd class="kbd">Escape</kbd></span><span>Close panels/modals</span></div>
+                    <div class="flex justify-between"><span><kbd class="kbd">?</kbd></span><span>Show this help</span></div>
+                </div>
+                <button onclick="document.getElementById('keyboard-help').classList.add('hidden')" 
+                        class="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/inbox.js"></script>
+    <script>
+        // Global keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Skip if user is typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.key) {
+                case '?':
+                    e.preventDefault();
+                    document.getElementById('keyboard-help').classList.toggle('hidden');
+                    break;
+                case '/':
+                    e.preventDefault();
+                    document.getElementById('search-input')?.focus();
+                    break;
+                case 'Escape':
+                    document.getElementById('keyboard-help').classList.add('hidden');
+                    document.getElementById('transaction-details')?.classList.add('hidden');
+                    break;
+            }
+        });
+
+        // HTMX configuration
+        htmx.config.globalViewTransitions = true;
+        htmx.config.useTemplateFragments = true;
+    </script>
+</body>
+</html>

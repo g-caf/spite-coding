@@ -1,0 +1,259 @@
+<!-- Left Sidebar - Filters and Actions -->
+<div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <!-- Search Bar -->
+    <div class="p-4 border-b border-gray-200">
+        <div class="relative">
+            <input type="text" 
+                   id="search-input"
+                   name="search" 
+                   placeholder="Search transactions..."
+                   value="<%= filters.search %>"
+                   hx-get="/inbox/search"
+                   hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#transaction-list"
+                   hx-include="[name='status']:checked, [name='category']:checked"
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="p-4 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-700 mb-3">Status Overview</h3>
+        <div class="space-y-2">
+            <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-red-400 mr-2"></div>
+                    <span>Unmatched</span>
+                </div>
+                <span class="font-medium text-red-600"><%= statusCounts.unmatched || 0 %></span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
+                    <span>Categorized</span>
+                </div>
+                <span class="font-medium text-yellow-600"><%= statusCounts.categorized || 0 %></span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-green-400 mr-2"></div>
+                    <span>Approved</span>
+                </div>
+                <span class="font-medium text-green-600"><%= statusCounts.approved || 0 %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex-1 p-4 overflow-y-auto custom-scrollbar">
+        <div class="space-y-6">
+            <!-- Status Filter -->
+            <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Status</h3>
+                <div class="space-y-2">
+                    <% const statusOptions = [
+                        { value: 'unmatched', label: 'Unmatched', color: 'red' },
+                        { value: 'categorized', label: 'Categorized', color: 'yellow' },
+                        { value: 'approved', label: 'Approved', color: 'green' },
+                        { value: 'rejected', label: 'Rejected', color: 'gray' },
+                        { value: 'exported', label: 'Exported', color: 'blue' }
+                    ]; %>
+                    <% statusOptions.forEach(status => { %>
+                    <label class="flex items-center">
+                        <input type="checkbox" 
+                               name="status" 
+                               value="<%= status.value %>"
+                               <%= filters.status.includes(status.value) ? 'checked' : '' %>
+                               hx-get="/inbox/search"
+                               hx-trigger="change"
+                               hx-target="#transaction-list"
+                               hx-include="#search-input, [name='status']:checked, [name='category']:checked"
+                               class="rounded border-gray-300 text-<%= status.color %>-600 focus:ring-<%= status.color %>-500">
+                        <span class="ml-2 text-sm text-gray-700"><%= status.label %></span>
+                    </label>
+                    <% }); %>
+                </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Categories</h3>
+                <div class="space-y-2">
+                    <% categories.forEach(category => { %>
+                    <label class="flex items-center">
+                        <input type="checkbox" 
+                               name="category" 
+                               value="<%= category.id %>"
+                               <%= filters.category.includes(category.id) ? 'checked' : '' %>
+                               hx-get="/inbox/search"
+                               hx-trigger="change"
+                               hx-target="#transaction-list"
+                               hx-include="#search-input, [name='status']:checked, [name='category']:checked"
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <div class="ml-2 flex items-center">
+                            <span class="text-lg mr-1"><%= category.icon %></span>
+                            <span class="text-sm text-gray-700"><%= category.name %></span>
+                        </div>
+                    </label>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div class="p-4 border-t border-gray-200 bg-gray-50">
+        <div id="bulk-actions" class="hidden">
+            <p class="text-sm text-gray-600 mb-3">
+                <span id="selected-count">0</span> transactions selected
+            </p>
+            <div class="flex space-x-2">
+                <select id="bulk-category" class="flex-1 text-sm border-gray-300 rounded">
+                    <option value="">Choose category...</option>
+                    <% categories.forEach(category => { %>
+                    <option value="<%= category.id %>"><%= category.name %></option>
+                    <% }); %>
+                </select>
+                <button onclick="applyBulkAction('categorize')" 
+                        class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Apply
+                </button>
+            </div>
+            <div class="flex space-x-2 mt-2">
+                <button onclick="applyBulkAction('approve')" 
+                        class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+                    Approve All
+                </button>
+                <button onclick="applyBulkAction('reject')" 
+                        class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                    Reject All
+                </button>
+            </div>
+        </div>
+        <div id="bulk-actions-placeholder" class="text-sm text-gray-500">
+            Select transactions to see bulk actions
+        </div>
+    </div>
+</div>
+
+<!-- Center - Transaction List -->
+<div class="flex-1 bg-white overflow-hidden flex flex-col">
+    <!-- List Header -->
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <input type="checkbox" 
+                       id="select-all" 
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="text-sm font-medium text-gray-700">
+                    <%= transactions.length %> transactions
+                </span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button class="p-2 text-gray-400 hover:text-gray-600" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <div class="flex bg-gray-200 rounded-lg p-1">
+                    <button class="px-3 py-1 text-sm bg-white rounded shadow-sm">List</button>
+                    <button class="px-3 py-1 text-sm text-gray-600">Cards</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction List -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar" id="transaction-list">
+        <%- include('../partials/transaction-list', { transactions, categories }) %>
+    </div>
+
+    <!-- Pagination -->
+    <% if (pagination.total > 1) { %>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                Page <%= pagination.current %> of <%= pagination.total %>
+            </div>
+            <div class="flex space-x-2">
+                <% if (pagination.hasPrev) { %>
+                <button hx-get="/inbox?page=<%= pagination.current - 1 %>"
+                        hx-target="#transaction-list"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                </button>
+                <% } %>
+                <% if (pagination.hasNext) { %>
+                <button hx-get="/inbox?page=<%= pagination.current + 1 %>"
+                        hx-target="#transaction-list"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                </button>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <% } %>
+</div>
+
+<!-- Right Panel - Transaction Details -->
+<div class="w-96 bg-white border-l border-gray-200 hidden" id="transaction-details">
+    <div id="transaction-details-content">
+        <!-- Details will be loaded here via HTMX -->
+    </div>
+</div>
+
+<!-- Receipt Upload Modal -->
+<div id="receipt-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Upload Receipt</h3>
+            <button onclick="closeReceiptModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="receipt-form" enctype="multipart/form-data">
+            <input type="hidden" id="receipt-transaction-id" name="transactionId">
+            
+            <!-- Drag & Drop Area -->
+            <div id="drop-zone" 
+                 class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-600 mb-2">Drag and drop your receipt here, or click to browse</p>
+                <p class="text-sm text-gray-400">Supports JPG, PNG, GIF, and PDF files up to 10MB</p>
+                <input type="file" id="receipt-file" name="receipt" accept="image/*,.pdf" class="hidden">
+            </div>
+            
+            <!-- Preview -->
+            <div id="file-preview" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-file-alt text-blue-500 mr-2"></i>
+                        <span id="file-name"></span>
+                    </div>
+                    <button type="button" onclick="clearFile()" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Upload Progress -->
+            <div id="upload-progress" class="hidden mt-4">
+                <div class="bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="button" onclick="closeReceiptModal()" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" id="upload-btn" disabled
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300">
+                    Upload Receipt
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

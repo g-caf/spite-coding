@@ -1,0 +1,93 @@
+<% transactions.forEach(transaction => { %>
+<div class="transaction-row border-b border-gray-200 hover:bg-gray-50 cursor-pointer" 
+     data-transaction-id="<%= transaction.id %>"
+     hx-get="/inbox/transaction/<%= transaction.id %>"
+     hx-target="#transaction-details-content"
+     hx-swap="innerHTML">
+    
+    <div class="px-6 py-4 flex items-center space-x-4">
+        <!-- Checkbox -->
+        <input type="checkbox" 
+               class="transaction-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+               data-transaction-id="<%= transaction.id %>">
+        
+        <!-- Transaction Info -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="text-sm font-medium text-gray-900 truncate">
+                    <%= transaction.description %>
+                </h3>
+                <span class="text-sm font-semibold text-gray-900">
+                    <%= transaction.formattedAmount %>
+                </span>
+            </div>
+            
+            <div class="flex items-center space-x-4 text-xs text-gray-500">
+                <span class="flex items-center">
+                    <i class="fas fa-calendar mr-1"></i>
+                    <%= transaction.formattedDate %>
+                </span>
+                <% if (transaction.merchant) { %>
+                <span class="flex items-center">
+                    <i class="fas fa-store mr-1"></i>
+                    <%= transaction.merchant %>
+                </span>
+                <% } %>
+                <% if (transaction.payment_method) { %>
+                <span class="flex items-center">
+                    <i class="fas fa-credit-card mr-1"></i>
+                    <%= transaction.payment_method %>
+                </span>
+                <% } %>
+            </div>
+        </div>
+        
+        <!-- Status and Category -->
+        <div class="flex items-center space-x-3">
+            <!-- Category -->
+            <% if (transaction.category_id) { %>
+                <% const category = categories.find(c => c.id === transaction.category_id); %>
+                <% if (category) { %>
+                <div class="flex items-center px-2 py-1 bg-gray-100 rounded-full">
+                    <span class="text-sm mr-1"><%= category.icon %></span>
+                    <span class="text-xs font-medium text-gray-700"><%= category.name %></span>
+                </div>
+                <% } %>
+            <% } %>
+            
+            <!-- Status -->
+            <span class="px-2 py-1 text-xs font-medium rounded-full border status-<%= transaction.status %>">
+                <%= transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1) %>
+            </span>
+            
+            <!-- Receipt Indicator -->
+            <% if (transaction.receipt_url) { %>
+            <i class="fas fa-paperclip text-green-500" title="Has receipt"></i>
+            <% } else { %>
+            <i class="fas fa-paperclip text-gray-300" title="No receipt"></i>
+            <% } %>
+            
+            <!-- Actions -->
+            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="openReceiptModal('<%= transaction.id %>')" 
+                        class="p-1 text-gray-400 hover:text-blue-600" 
+                        title="Upload receipt">
+                    <i class="fas fa-upload"></i>
+                </button>
+                <button class="p-1 text-gray-400 hover:text-green-600" 
+                        title="Quick categorize">
+                    <i class="fas fa-tag"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<% }); %>
+
+<% if (transactions.length === 0) { %>
+<div class="text-center py-12">
+    <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
+    <p class="text-gray-500">Try adjusting your search or filters</p>
+</div>
+<% } %>

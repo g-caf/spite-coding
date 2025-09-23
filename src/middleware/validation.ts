@@ -36,3 +36,6 @@ export const validate = (validations: ValidationChain[]) => {
     handleValidationErrors(req, res, next);
   };
 };
+
+// Alias for compatibility
+export const validateRequest = validate;
