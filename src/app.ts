@@ -141,10 +141,10 @@ app.use((req, res, next) => {
 
 // Serve static files and set up view engine
 import path from 'path';
-app.use('/static', express.static(path.join(__dirname, '../public')));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/static', express.static(path.join(__dirname, '../../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../views'));
+app.set('views', path.join(__dirname, '../../views'));
 
 // Add database and services to request object
 app.use((req: any, res, next) => {
