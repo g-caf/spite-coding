@@ -162,6 +162,29 @@ initializePlaidRoutes(
   logger
 );
 
+// Root route - Airbase Killer Welcome!
+app.get('/', (req, res) => {
+  res.json({
+    name: '🚀 Expense Platform - Airbase Killer!',
+    version: '1.0.0',
+    description: 'Enterprise expense management platform that solves Airbase pain points',
+    status: 'LIVE! 🎉',
+    features: [
+      '📧 Unified Inbox (no more scattered views)',
+      '🤖 AI-powered receipt matching', 
+      '📄 Smart OCR processing',
+      '🏦 Real-time bank integration',
+      '📊 Intelligent categorization'
+    ],
+    endpoints: {
+      inbox: '/inbox',
+      api: '/api',
+      health: '/health',
+      plaid: '/api/plaid'
+    }
+  });
+});
+
 // API Routes
 app.use('/api/plaid', plaidRoutes);
 
