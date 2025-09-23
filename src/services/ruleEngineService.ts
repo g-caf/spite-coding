@@ -5,6 +5,7 @@
 
 import { knex } from '../utils/database';
 import { auditLogger } from '../utils/audit';
+import { getErrorMessage } from '../utils/errorHandling';
 
 export interface Rule {
   id: string;
@@ -27,17 +28,17 @@ export interface Rule {
 
 export interface RuleConditions {
   // Basic conditions
-  merchant_names?: string[];
-  merchant_categories?: string[];
+  merchant_names?: any[];
+  merchant_categories?: any[];
   amount_range?: {
     min?: number;
     max?: number;
   };
-  description_keywords?: string[];
+  description_keywords?: any[];
   
   // Advanced conditions
-  user_ids?: string[];
-  account_ids?: string[];
+  user_ids?: any[];
+  account_ids?: any[];
   time_conditions?: {
     days_of_week?: number[]; // 0=Sunday, 6=Saturday
     time_range?: {
@@ -53,12 +54,12 @@ export interface RuleConditions {
   // Transaction properties
   is_recurring?: boolean;
   transaction_type?: 'debit' | 'credit';
-  currency?: string[];
+  currency?: any[];
   
   // Location conditions
   location_conditions?: {
-    countries?: string[];
-    cities?: string[];
+    countries?: any[];
+    cities?: any[];
     radius_km?: number;
     coordinates?: {
       latitude: number;
@@ -81,7 +82,7 @@ export interface RuleConditions {
   similarity_conditions?: {
     reference_transaction_id?: string;
     similarity_threshold?: number;
-    features?: string[]; // 'amount', 'merchant', 'description', 'time'
+    features?: any[]; // 'amount', 'merchant', 'description', 'time'
   };
 }
 
@@ -99,10 +100,10 @@ export interface RuleActions {
   
   // Notification actions
   notify_manager?: boolean;
-  notify_users?: string[];
+  notify_users?: any[];
   send_email?: {
     template: string;
-    recipients: string[];
+    recipients: any[];
     subject?: string;
   };
   
@@ -115,7 +116,7 @@ export interface RuleActions {
   set_merchant?: string;
   set_department?: string;
   set_project?: string;
-  add_tags?: string[];
+  add_tags?: any[];
   
   // Duplicate detection actions
   flag_as_duplicate?: boolean;
@@ -134,8 +135,8 @@ export interface RuleActions {
 
 export interface RuleValidation {
   isValid: boolean;
-  errors: string[];
-  warnings: string[];
+  errors: any[];
+  warnings: any[];
 }
 
 export interface RuleTestResult {
@@ -146,8 +147,8 @@ export interface RuleTestResult {
   matched_transactions: Array<{
     transaction_id: string;
     confidence_score: number;
-    applied_actions: string[];
-    reasons: string[];
+    applied_actions: any[];
+    reasons: any[];
   }>;
   performance_metrics: {
     execution_time_ms: number;
@@ -186,7 +187,7 @@ export interface LearningFeedback {
   applied_rule_id?: string;
   correction_type: 'category' | 'policy' | 'merchant';
   feedback: string;
-  organizationId: string;
+  organization_id: string;
   userId: string;
 }
 
@@ -194,7 +195,7 @@ export class RuleEngineService {
   /**
    * Get all rules with optional filtering
    */
-  async getRules(organizationId: string, filters: {
+  async getRules(organization_id: string, filters: {
     activeOnly?: boolean;
     ruleType?: string;
     priorityMin?: number;
@@ -227,7 +228,7 @@ export class RuleEngineService {
   /**
    * Get a specific rule by ID
    */
-  async getRuleById(ruleId: string, organizationId: string): Promise<Rule | null> {
+  async getRuleById(ruleId: string, organization_id: string): Promise<Rule | null> {
     const rule = await knex('rules')
       .where('id', ruleId)
       .where('organization_id', organizationId)
@@ -258,7 +259,7 @@ export class RuleEngineService {
   async createRule(ruleData: Partial<Rule>): Promise<Rule> {
     // Check for duplicate rule names
     const existingRule = await knex('rules')
-      .where('organization_id', ruleData.organizationId)
+      .where('organization_id', ruleData.organization_id)
       .where('name', ruleData.name)
       .first();
 
@@ -268,7 +269,7 @@ export class RuleEngineService {
 
     const [rule] = await knex('rules')
       .insert({
-        organization_id: ruleData.organizationId,
+        organization_id: ruleData.organization_id,
         name: ruleData.name,
         description: ruleData.description,
         rule_type: ruleData.rule_type,
@@ -278,8 +279,8 @@ export class RuleEngineService {
         active: ruleData.active !== false,
         match_count: 0,
         success_rate: 0,
-        created_by: ruleData.createdBy,
-        updated_by: ruleData.updatedBy,
+        created_by: ruleData.created_by,
+        updated_by: ruleData.updated_by,
         created_at: knex.fn.now(),
         updated_at: knex.fn.now()
       })
@@ -289,8 +290,8 @@ export class RuleEngineService {
       action: 'CREATE_RULE',
       resource_type: 'Rule',
       resource_id: rule.id,
-      organization_id: ruleData.organizationId,
-      user_id: ruleData.createdBy,
+      organization_id: ruleData.organization_id,
+      user_id: ruleData.created_by,
       details: {
         rule_name: rule.name,
         rule_type: rule.rule_type,
@@ -306,7 +307,7 @@ export class RuleEngineService {
    */
   async updateRule(
     ruleId: string,
-    organizationId: string,
+    organization_id: string,
     updateData: Partial<Rule>
   ): Promise<Rule | null> {
     const existingRule = await knex('rules')
@@ -332,7 +333,7 @@ export class RuleEngineService {
     }
 
     const updateFields: any = {
-      updated_by: updateData.updatedBy,
+      updated_by: updateData.updated_by,
       updated_at: knex.fn.now()
     };
 
@@ -353,8 +354,8 @@ export class RuleEngineService {
       action: 'UPDATE_RULE',
       resource_type: 'Rule',
       resource_id: ruleId,
-      organization_id: organizationId,
-      user_id: updateData.updatedBy,
+      organization_id: organization_id,
+      user_id: updateData.updated_by,
       details: {
         changes: Object.keys(updateFields).filter(key => !['updated_by', 'updated_at'].includes(key))
       }
@@ -366,7 +367,7 @@ export class RuleEngineService {
   /**
    * Delete a rule (soft delete)
    */
-  async deleteRule(ruleId: string, organizationId: string): Promise<boolean> {
+  async deleteRule(ruleId: string, organization_id: string): Promise<boolean> {
     const rule = await knex('rules')
       .where('id', ruleId)
       .where('organization_id', organizationId)
@@ -388,7 +389,7 @@ export class RuleEngineService {
       action: 'DELETE_RULE',
       resource_type: 'Rule',
       resource_id: ruleId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       details: {
         rule_name: rule.name
       }
@@ -401,8 +402,8 @@ export class RuleEngineService {
    * Validate rule structure and logic
    */
   async validateRule(rule: Partial<Rule>): Promise<RuleValidation> {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+    const errors: any[] = [];
+    const warnings: any[] = [];
 
     // Basic validation
     if (!rule.name || rule.name.trim().length === 0) {
@@ -423,16 +424,16 @@ export class RuleEngineService {
 
     // Validate conditions
     if (rule.conditions) {
-      await this.validateConditions(rule.conditions, rule.organizationId, errors, warnings);
+      await this.validateConditions(rule.conditions, rule.organization_id, errors, warnings);
     }
 
     // Validate actions
     if (rule.actions) {
-      await this.validateActions(rule.actions, rule.organizationId, errors, warnings);
+      await this.validateActions(rule.actions, rule.organization_id, errors, warnings);
     }
 
     // Check for conflicting rules
-    if (rule.organizationId) {
+    if (rule.organization_id) {
       const conflictingRules = await this.findConflictingRules(rule);
       if (conflictingRules.length > 0) {
         warnings.push(`This rule may conflict with ${conflictingRules.length} existing rule(s)`);
@@ -474,7 +475,7 @@ export class RuleEngineService {
 
         // Apply actions if not a dry run
         if (!dryRun) {
-          await this.applyRuleActions(rule.actions, transaction, rule.organizationId);
+          await this.applyRuleActions(rule.actions, transaction, rule.organization_id);
         }
       }
     }
@@ -499,13 +500,13 @@ export class RuleEngineService {
    */
   async applyRuleToTransactions(params: {
     ruleId: string;
-    organizationId: string;
+    organization_id: string;
     userId: string;
-    transactionIds?: string[];
+    transactionIds?: any[];
     dateRange?: { start: string; end: string };
     dryRun?: boolean;
   }): Promise<{ affected_count: number; details: any[] }> {
-    const { ruleId, organizationId, userId, transactionIds, dateRange, dryRun = true } = params;
+    const { ruleId, organization_id, userId, transactionIds, dateRange, dryRun = true } = params;
 
     const rule = await this.getRuleById(ruleId, organizationId);
     if (!rule) {
@@ -545,7 +546,7 @@ export class RuleEngineService {
           await knex('rule_applications').insert({
             rule_id: ruleId,
             transaction_id: transaction.id,
-            organization_id: organizationId,
+            organization_id: organization_id,
             applied_actions: JSON.stringify(match.actions),
             confidence_score: match.confidence,
             applied_by: userId,
@@ -566,7 +567,7 @@ export class RuleEngineService {
         action: 'APPLY_RULE_BULK',
         resource_type: 'Rule',
         resource_id: ruleId,
-        organization_id: organizationId,
+        organization_id: organization_id,
         user_id: userId,
         details: {
           rule_name: rule.name,
@@ -586,12 +587,12 @@ export class RuleEngineService {
    * Get rule performance analytics
    */
   async getRuleAnalytics(params: {
-    organizationId: string;
+    organization_id: string;
     ruleId?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<RuleAnalytics> {
-    const { organizationId, ruleId, startDate, endDate } = params;
+    const { organization_id, ruleId, startDate, endDate } = params;
 
     let dateFilter = '';
     const queryParams: any[] = [organizationId];
@@ -670,7 +671,7 @@ export class RuleEngineService {
       LEFT JOIN rule_applications ra ON t.id = ra.transaction_id ${dateFilter}
       LEFT JOIN rule_feedback rf ON ra.id = rf.rule_application_id
       WHERE r.organization_id = ? AND t.organization_id = ?
-    `, [organizationId, organizationId]);
+    `, [organization_id, organizationId]);
 
     return {
       rule_performance: rulePerformance.rows,
@@ -682,8 +683,8 @@ export class RuleEngineService {
   /**
    * Submit learning feedback to improve rule accuracy
    */
-  async submitLearningFeedback(feedbackData: LearningFeedback): Promise<{ success: boolean; learned_patterns: string[] }> {
-    const { transaction_id, expected_category_id, applied_rule_id, correction_type, feedback, organizationId, userId } = feedbackData;
+  async submitLearningFeedback(feedbackData: LearningFeedback): Promise<{ success: boolean; learned_patterns: any[] }> {
+    const { transaction_id, expected_category_id, applied_rule_id, correction_type, feedback, organization_id, userId } = feedbackData;
 
     // Record the feedback
     await knex('rule_feedback').insert({
@@ -692,18 +693,18 @@ export class RuleEngineService {
       applied_rule_id,
       correction_type,
       feedback,
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       created_at: knex.fn.now()
     });
 
     // Analyze patterns and suggest rule improvements
-    const learnedPatterns = await this.analyzeUserCorrections(organizationId, correction_type);
+    const learnedPatterns = await this.analyzeUserCorrections(organization_id, correction_type);
 
     await auditLogger.log({
       action: 'SUBMIT_LEARNING_FEEDBACK',
       resource_type: 'Rule',
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         transaction_id,
@@ -721,21 +722,21 @@ export class RuleEngineService {
   /**
    * Process transactions with active rules (called by transaction processor)
    */
-  async processTransactionWithRules(transaction: any, organizationId: string): Promise<{
-    applied_rules: string[];
+  async processTransactionWithRules(transaction: any, organization_id: string): Promise<{
+    applied_rules: any[];
     categorized: boolean;
     requires_approval: boolean;
-    flagged_issues: string[];
+    flaggedIssues: any[];
   }> {
     const activeRules = await knex('rules')
       .where('organization_id', organizationId)
       .where('active', true)
       .orderBy('priority', 'desc');
 
-    const appliedRules: string[] = [];
+    const appliedRules: any[] = [];
     let categorized = false;
     let requiresApproval = false;
-    const flaggedIssues: string[] = [];
+    const flaggedIssues: any[] = [];
 
     for (const rule of activeRules) {
       const match = await this.evaluateRuleForTransaction(rule, transaction);
@@ -747,13 +748,13 @@ export class RuleEngineService {
         
         if (actionResults.categorized) categorized = true;
         if (actionResults.requires_approval) requiresApproval = true;
-        flaggedIssues.push(...actionResults.flagged_issues);
+        flaggedIssues.push(...actionResults.flaggedIssues);
 
         // Log rule application
         await knex('rule_applications').insert({
           rule_id: rule.id,
           transaction_id: transaction.id,
-          organization_id: organizationId,
+          organization_id: organization_id,
           applied_actions: JSON.stringify(match.actions),
           confidence_score: match.confidence,
           applied_at: knex.fn.now()
@@ -771,7 +772,7 @@ export class RuleEngineService {
       applied_rules: appliedRules,
       categorized,
       requires_approval: requiresApproval,
-      flagged_issues
+      flaggedIssues
     };
   }
 
@@ -781,9 +782,9 @@ export class RuleEngineService {
 
   private async validateConditions(
     conditions: RuleConditions, 
-    organizationId: string, 
-    errors: string[], 
-    warnings: string[]
+    organization_id: string, 
+    errors: any[], 
+    warnings: any[]
   ): Promise<void> {
     // Validate merchant conditions
     if (conditions.merchant_names && conditions.merchant_names.length === 0) {
@@ -817,16 +818,16 @@ export class RuleEngineService {
         // Basic syntax validation - in production, use a proper JS parser
         new Function('transaction', conditions.custom_logic);
       } catch (error) {
-        errors.push(`Invalid custom logic syntax: ${error.message}`);
+        errors.push(`Invalid custom logic syntax: ${getErrorMessage(error)}`);
       }
     }
   }
 
   private async validateActions(
     actions: RuleActions,
-    organizationId: string,
-    errors: string[],
-    warnings: string[]
+    organization_id: string,
+    errors: any[],
+    warnings: any[]
   ): Promise<void> {
     // Validate category reference
     if (actions.set_category && organizationId) {
@@ -864,11 +865,11 @@ export class RuleEngineService {
   }
 
   private async findConflictingRules(rule: Partial<Rule>): Promise<Rule[]> {
-    if (!rule.organizationId || !rule.conditions) return [];
+    if (!rule.organization_id || !rule.conditions) return [];
 
     // Find rules with overlapping conditions
     const existingRules = await knex('rules')
-      .where('organization_id', rule.organizationId)
+      .where('organization_id', rule.organization_id)
       .where('active', true)
       .where('rule_type', rule.rule_type);
 
@@ -891,11 +892,11 @@ export class RuleEngineService {
   private async evaluateRuleForTransaction(rule: Partial<Rule>, transaction: any): Promise<{
     matches: boolean;
     confidence: number;
-    actions: string[];
-    reasons: string[];
+    actions: any[];
+    reasons: any[];
   }> {
-    const reasons: string[] = [];
-    const actions: string[] = [];
+    const reasons: any[] = [];
+    const actions: any[] = [];
     let confidence = 0;
     let totalConditions = 0;
     let matchedConditions = 0;
@@ -966,7 +967,7 @@ export class RuleEngineService {
         }
       } catch (error) {
         // Log error but don't fail the rule
-        console.warn('Custom logic evaluation failed:', error.message);
+        console.warn('Custom logic evaluation failed:', getErrorMessage(error));
       }
     }
 
@@ -987,16 +988,16 @@ export class RuleEngineService {
     };
   }
 
-  private async applyRuleActions(actions: RuleActions, transaction: any, organizationId: string): Promise<{
+  private async applyRuleActions(actions: RuleActions, transaction: any, organization_id: string): Promise<{
     categorized: boolean;
     requires_approval: boolean;
-    flagged_issues: string[];
+    flaggedIssues: any[];
   }> {
     let categorized = false;
     let requiresApproval = false;
-    const flaggedIssues: string[] = [];
+    const flaggedIssues: any[] = [];
 
-    if (!actions) return { categorized, requires_approval: requiresApproval, flagged_issues: flaggedIssues };
+    if (!actions) return { categorized, requires_approval: requiresApproval, flaggedIssues: flaggedIssues };
 
     // Apply categorization
     if (actions.set_category) {
@@ -1031,7 +1032,7 @@ export class RuleEngineService {
     if (actions.notify_manager || actions.notify_users) {
       // Queue notification tasks
       await knex('notification_queue').insert({
-        organization_id: organizationId,
+        organization_id: organization_id,
         transaction_id: transaction.id,
         notification_type: 'rule_triggered',
         recipients: JSON.stringify(actions.notify_users || []),
@@ -1043,12 +1044,12 @@ export class RuleEngineService {
     return {
       categorized,
       requires_approval: requiresApproval,
-      flagged_issues: flaggedIssues
+      flaggedIssues: flaggedIssues
     };
   }
 
-  private async analyzeUserCorrections(organizationId: string, correctionType: string): Promise<string[]> {
-    const patterns: string[] = [];
+  private async analyzeUserCorrections(organization_id: string, correctionType: string): Promise<any[]> {
+    const patterns: any[] = [];
 
     // Analyze recent corrections to identify patterns
     const recentCorrections = await knex('rule_feedback')

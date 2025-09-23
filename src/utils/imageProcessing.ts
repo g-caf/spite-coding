@@ -124,7 +124,7 @@ export class ImageProcessor {
           processor = processor.png({
             compressionLevel: 9,
             adaptiveFiltering: true,
-            palette: originalMetadata.channels === 1 || originalMetadata.channels === 3
+            palette: (originalMetadata.channels as any) === 1 || originalMetadata.channels === 3
           });
           break;
         case 'webp':

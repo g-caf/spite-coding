@@ -47,14 +47,14 @@ export const initializePlaidRoutes = (
  */
 router.get('/link-token',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
   [
     query('language').optional().isIn(['en', 'es', 'fr']),
     query('user_legal_name').optional().isString().trim(),
     query('user_email').optional().isEmail()
   ],
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -100,13 +100,13 @@ router.get('/link-token',
  */
 router.post('/connect',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
   [
     body('public_token').notEmpty().withMessage('Public token is required'),
     body('metadata').optional().isObject()
   ],
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -149,9 +149,9 @@ router.post('/connect',
  */
 router.get('/accounts',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const { organization_id } = req.user;
 
@@ -182,12 +182,12 @@ router.get('/accounts',
  */
 router.delete('/accounts/:itemId',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
   [
     param('itemId').notEmpty().withMessage('Item ID is required')
   ],
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -225,12 +225,12 @@ router.delete('/accounts/:itemId',
  */
 router.post('/accounts/:itemId/sync',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
   [
     param('itemId').notEmpty().withMessage('Item ID is required')
   ],
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -268,9 +268,9 @@ router.post('/accounts/:itemId/sync',
  */
 router.get('/sync-status',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const { organization_id } = req.user;
 
@@ -328,7 +328,7 @@ router.get('/sync-status',
 router.post('/webhook',
   webhookLimiter,
   express.raw({ type: 'application/json' }),
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const payload = JSON.parse(req.body.toString());
       const signature = req.headers['plaid-verification'] as string;
@@ -367,14 +367,14 @@ router.post('/webhook',
  */
 router.get('/transactions/recent',
   plaidLimiter,
-  authMiddleware,
+  authMiddleware.requireAuth(),
   organizationMiddleware,
   [
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
     query('offset').optional().isInt({ min: 0 }).toInt(),
     query('account_id').optional().isUUID()
   ],
-  async (req: any, res) => {
+  async (req: any, res: any) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {

@@ -9,6 +9,7 @@ import { authenticateToken } from '../../auth/middleware/authentication';
 import { requirePermissions } from '../../auth/middleware/authorization';
 import { validateRequest } from '../../middleware/validation';
 import { body, param, query } from 'express-validator';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const router = Router();
 const categorizationService = new TransactionCategorizationService();
@@ -31,14 +32,14 @@ router.post('/:id/categorize',
   async (req, res) => {
     try {
       const transactionId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { category_id, apply_rules, confidence_override } = req.body;
 
       const result = await categorizationService.categorizeTransaction({
         transactionId,
         categoryId: category_id,
-        organizationId,
+        organization_id,
         userId,
         applyRules: apply_rules,
         confidenceOverride: confidence_override
@@ -53,7 +54,7 @@ router.post('/:id/categorize',
       res.status(500).json({
         success: false,
         error: 'Failed to categorize transaction',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -72,12 +73,12 @@ router.get('/:id/suggestions',
   async (req, res) => {
     try {
       const transactionId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const limit = parseInt(req.query.limit as string) || 5;
 
       const suggestions = await categorizationService.getCategorySuggestions({
         transactionId,
-        organizationId,
+        organization_id,
         limit
       });
 
@@ -89,7 +90,7 @@ router.get('/:id/suggestions',
       res.status(500).json({
         success: false,
         error: 'Failed to get category suggestions',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -109,12 +110,12 @@ router.post('/auto-categorize',
   requirePermissions(['write_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { transaction_ids, date_range, confidence_threshold, dry_run } = req.body;
 
       const result = await categorizationService.autoCategorizeTransactions({
-        organizationId,
+        organization_id,
         userId,
         transactionIds: transaction_ids,
         dateRange: date_range,
@@ -133,7 +134,7 @@ router.post('/auto-categorize',
       res.status(500).json({
         success: false,
         error: 'Failed to auto-categorize transactions',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -151,13 +152,13 @@ router.post('/suggestions/accept',
   requirePermissions(['write_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { suggestion_id, feedback } = req.body;
 
       const result = await categorizationService.acceptCategorySuggestion({
         suggestionId: suggestion_id,
-        organizationId,
+        organization_id,
         userId,
         feedback
       });
@@ -171,7 +172,7 @@ router.post('/suggestions/accept',
       res.status(500).json({
         success: false,
         error: 'Failed to accept suggestion',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -190,14 +191,14 @@ router.post('/suggestions/reject',
   requirePermissions(['write_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { suggestion_id, correct_category_id, feedback } = req.body;
 
       const result = await categorizationService.rejectCategorySuggestion({
         suggestionId: suggestion_id,
         correctCategoryId: correct_category_id,
-        organizationId,
+        organization_id,
         userId,
         feedback
       });
@@ -211,7 +212,7 @@ router.post('/suggestions/reject',
       res.status(500).json({
         success: false,
         error: 'Failed to reject suggestion',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -230,11 +231,11 @@ router.get('/uncategorized',
   requirePermissions(['read_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { limit, offset, include_suggestions } = req.query;
 
       const result = await categorizationService.getUncategorizedTransactions({
-        organizationId,
+        organization_id,
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
         includeSuggestions: include_suggestions === 'true'
@@ -254,7 +255,7 @@ router.get('/uncategorized',
       res.status(500).json({
         success: false,
         error: 'Failed to get uncategorized transactions',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -273,11 +274,11 @@ router.get('/categorization/analytics',
   requirePermissions(['read_analytics']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { start_date, end_date, include_accuracy } = req.query;
 
       const analytics = await categorizationService.getCategorizationAnalytics({
-        organizationId,
+        organization_id,
         startDate: start_date as string,
         endDate: end_date as string,
         includeAccuracy: include_accuracy === 'true'
@@ -291,7 +292,7 @@ router.get('/categorization/analytics',
       res.status(500).json({
         success: false,
         error: 'Failed to get categorization analytics',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -309,12 +310,12 @@ router.post('/train-model',
   requirePermissions(['admin']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { model_type, training_period_days } = req.body;
 
       const result = await categorizationService.trainModel({
-        organizationId,
+        organization_id,
         userId,
         modelType: model_type || 'ml_classification',
         trainingPeriodDays: training_period_days || 90
@@ -329,7 +330,7 @@ router.post('/train-model',
       res.status(500).json({
         success: false,
         error: 'Failed to train model',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -348,12 +349,12 @@ router.post('/bulk-recategorize',
   requirePermissions(['write_transactions', 'write_rules']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { category_mapping, apply_to_future, date_range } = req.body;
 
       const result = await categorizationService.bulkRecategorize({
-        organizationId,
+        organization_id,
         userId,
         categoryMapping: category_mapping,
         applyToFuture: apply_to_future,
@@ -369,7 +370,7 @@ router.post('/bulk-recategorize',
       res.status(500).json({
         success: false,
         error: 'Failed to bulk recategorize',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -387,11 +388,11 @@ router.get('/merchant-analysis',
   requirePermissions(['read_analytics']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { merchant_name, include_suggestions } = req.query;
 
       const analysis = await categorizationService.analyzeMerchantCategorization({
-        organizationId,
+        organization_id,
         merchantName: merchant_name as string,
         includeSuggestions: include_suggestions === 'true'
       });
@@ -404,7 +405,7 @@ router.get('/merchant-analysis',
       res.status(500).json({
         success: false,
         error: 'Failed to analyze merchant categorization',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }

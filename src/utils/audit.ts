@@ -59,13 +59,13 @@ export class AuditLogger {
     resourceType: string,
     resourceId: string,
     userId: string,
-    organizationId: string
+    organization_id: string
   ): Promise<void> {
     await this.log({
       action: `${action}_${resourceType.toUpperCase()}`,
       resource_type: resourceType,
       resource_id: resourceId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId
     });
   }
@@ -83,7 +83,7 @@ export class AuditLogger {
       action: event,
       resource_type: 'Security',
       user_id: userId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       details
     });
   }
@@ -122,12 +122,12 @@ export class AuditLogger {
    */
   async getUserActivity(
     userId: string,
-    organizationId: string,
+    organization_id: string,
     days = 30
   ): Promise<{
     total_actions: number;
     recent_actions: any[];
-    action_summary: Record<string, number>;
+    action_summary: any;
   }> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -157,10 +157,10 @@ export class AuditLogger {
     ]);
 
     return {
-      total_actions: parseInt(totalResult?.total || 0),
+      total_actions: parseInt((totalResult as any)?.total || "0"),
       recent_actions: recentActions,
       action_summary: actionSummary.reduce((acc, row) => {
-        acc[row.action] = parseInt(row.count);
+        acc[row.action] = parseInt((row as any)?.count || "0");
         return acc;
       }, {})
     };

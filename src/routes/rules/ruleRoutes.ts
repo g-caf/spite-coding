@@ -9,6 +9,7 @@ import { authenticateToken } from '../../auth/middleware/authentication';
 import { requirePermissions } from '../../auth/middleware/authorization';
 import { validateRequest } from '../../middleware/validation';
 import { body, param, query } from 'express-validator';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const router = Router();
 const ruleEngineService = new RuleEngineService();
@@ -30,7 +31,7 @@ router.get('/',
   requirePermissions(['read_rules']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const filters = {
         activeOnly: req.query.active_only !== 'false',
         ruleType: req.query.rule_type as string,
@@ -38,21 +39,21 @@ router.get('/',
         priorityMax: req.query.priority_max ? parseInt(req.query.priority_max as string) : undefined
       };
 
-      const rules = await ruleEngineService.getRules(organizationId, filters);
+      const rules = await ruleEngineService.getRules(organization_id, filters);
 
       res.json({
         success: true,
         data: rules,
         meta: {
           total: rules.length,
-          filters_applied: Object.keys(filters).filter(key => filters[key] !== undefined)
+          filters_applied: Object.keys(filters).filter(key => (filters as any)[key] !== undefined)
         }
       });
     } catch (error) {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch rules',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -70,7 +71,7 @@ router.get('/:id',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const rule = await ruleEngineService.getRuleById(ruleId, organizationId);
       
@@ -89,7 +90,7 @@ router.get('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -112,12 +113,12 @@ router.post('/',
   requirePermissions(['write_rules']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const ruleData = {
         ...req.body,
-        organizationId,
+        organization_id,
         createdBy: userId,
         updatedBy: userId
       };
@@ -143,7 +144,7 @@ router.post('/',
       res.status(500).json({
         success: false,
         error: 'Failed to create rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -168,8 +169,8 @@ router.put('/:id',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const updateData = {
         ...req.body,
@@ -201,7 +202,7 @@ router.put('/:id',
         }
       }
 
-      const rule = await ruleEngineService.updateRule(ruleId, organizationId, updateData);
+      const rule = await ruleEngineService.updateRule(ruleId, organization_id, updateData);
 
       if (!rule) {
         return res.status(404).json({
@@ -219,7 +220,7 @@ router.put('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to update rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -237,7 +238,7 @@ router.delete('/:id',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const success = await ruleEngineService.deleteRule(ruleId, organizationId);
 
@@ -256,7 +257,7 @@ router.delete('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to delete rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -275,7 +276,7 @@ router.post('/test',
   requirePermissions(['write_rules']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { rule, test_transactions, dry_run } = req.body;
 
       // Validate rule structure
@@ -307,7 +308,7 @@ router.post('/test',
       res.status(500).json({
         success: false,
         error: 'Failed to test rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -328,13 +329,13 @@ router.post('/:id/apply',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { transaction_ids, date_range, dry_run } = req.body;
 
       const result = await ruleEngineService.applyRuleToTransactions({
         ruleId,
-        organizationId,
+        organization_id,
         userId,
         transactionIds: transaction_ids,
         dateRange: date_range,
@@ -352,7 +353,7 @@ router.post('/:id/apply',
       res.status(500).json({
         success: false,
         error: 'Failed to apply rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -371,11 +372,11 @@ router.get('/analytics/performance',
   requirePermissions(['read_analytics']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { rule_id, start_date, end_date } = req.query;
 
       const analytics = await ruleEngineService.getRuleAnalytics({
-        organizationId,
+        organization_id,
         ruleId: rule_id as string,
         startDate: start_date as string,
         endDate: end_date as string
@@ -389,7 +390,7 @@ router.get('/analytics/performance',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch rule analytics',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -410,12 +411,12 @@ router.post('/learn',
   requirePermissions(['write_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const learningData = {
         ...req.body,
-        organizationId,
+        organization_id,
         userId
       };
 
@@ -430,7 +431,7 @@ router.post('/learn',
       res.status(500).json({
         success: false,
         error: 'Failed to submit learning feedback',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }

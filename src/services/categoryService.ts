@@ -5,6 +5,7 @@
 
 import { knex } from '../utils/database';
 import { auditLogger } from '../utils/audit';
+import { getErrorMessage } from '../utils/errorHandling';
 
 export interface Category {
   id: string;
@@ -20,14 +21,14 @@ export interface Category {
     tax_rate?: number;
   };
   department_settings?: {
-    allowed_departments?: string[];
-    required_approval_departments?: string[];
+    allowed_departments?: any[];
+    required_approval_departments?: any[];
   };
   policy_settings?: {
     receipt_required: boolean;
     approval_required: boolean;
     spending_limit?: number;
-    allowed_users?: string[];
+    allowed_users?: any[];
   };
   active: boolean;
   usage_stats?: {
@@ -49,7 +50,7 @@ export interface Category {
 }
 
 export interface CategoryFilters {
-  organizationId: string;
+  organization_id: string;
   includeHierarchy?: boolean;
   parentId?: string;
   activeOnly?: boolean;
@@ -100,7 +101,7 @@ export class CategoryService {
       )
       .leftJoin('gl_accounts as gl', 'c.gl_account_id', 'gl.id')
       .leftJoin('categories as parent', 'c.parent_id', 'parent.id')
-      .where('c.organization_id', filters.organizationId);
+      .where('c.organization_id', filters.organization_id);
 
     if (filters.activeOnly) {
       query.where('c.active', true);
@@ -118,10 +119,10 @@ export class CategoryService {
     const categories = await query;
 
     // Add usage statistics
-    const categoriesWithStats = await this.addUsageStats(categories, filters.organizationId);
+    const categoriesWithStats = await this.addUsageStats(categories, filters.organization_id);
 
     if (filters.includeHierarchy && !filters.parentId) {
-      return this.buildHierarchy(categoriesWithStats, filters.organizationId);
+      return this.buildHierarchy(categoriesWithStats, filters.organization_id);
     }
 
     return categoriesWithStats;
@@ -130,7 +131,7 @@ export class CategoryService {
   /**
    * Get a specific category by ID
    */
-  async getCategoryById(categoryId: string, organizationId: string): Promise<Category | null> {
+  async getCategoryById(categoryId: string, organization_id: string): Promise<Category | null> {
     const category = await knex('categories as c')
       .select(
         'c.*',
@@ -234,7 +235,7 @@ export class CategoryService {
       }
     });
 
-    return this.getCategoryById(category.id, categoryData.organization_id);
+    return this.getCategoryById(category.id, categoryData.organization_id!);
   }
 
   /**
@@ -242,7 +243,7 @@ export class CategoryService {
    */
   async updateCategory(
     categoryId: string, 
-    organizationId: string, 
+    organization_id: string, 
     updateData: Partial<Category>
   ): Promise<Category | null> {
     const existingCategory = await knex('categories')
@@ -286,7 +287,7 @@ export class CategoryService {
     }
 
     const updateFields: any = {
-      updated_by: updateData.updatedBy,
+      updated_by: updateData.updated_by,
       updated_at: knex.fn.now()
     };
 
@@ -315,8 +316,8 @@ export class CategoryService {
       action: 'UPDATE_CATEGORY',
       resource_type: 'Category',
       resource_id: categoryId,
-      organization_id: organizationId,
-      user_id: updateData.updatedBy,
+      organization_id: organization_id,
+      user_id: updateData.updated_by,
       details: {
         changes: Object.keys(updateFields).filter(key => !['updated_by', 'updated_at'].includes(key))
       }
@@ -328,7 +329,7 @@ export class CategoryService {
   /**
    * Delete a category (soft delete)
    */
-  async deleteCategory(categoryId: string, organizationId: string): Promise<boolean> {
+  async deleteCategory(categoryId: string, organization_id: string): Promise<boolean> {
     const category = await knex('categories')
       .where('id', categoryId)
       .where('organization_id', organizationId)
@@ -345,7 +346,7 @@ export class CategoryService {
       .count('id as count')
       .first();
 
-    if (parseInt(childCount.count) > 0) {
+    if (parseInt((childCount! as any)?.count || "0") > 0) {
       throw new Error('Cannot delete category with active child categories');
     }
 
@@ -355,7 +356,7 @@ export class CategoryService {
       .count('id as count')
       .first();
 
-    if (parseInt(transactionCount.count) > 0) {
+    if (parseInt((transactionCount! as any)?.count || "0") > 0) {
       throw new Error('Cannot delete category that is in use by transactions');
     }
 
@@ -371,7 +372,7 @@ export class CategoryService {
       action: 'DELETE_CATEGORY',
       resource_type: 'Category',
       resource_id: categoryId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       details: {
         category_name: category.name
       }
@@ -384,12 +385,12 @@ export class CategoryService {
    * Get category usage analytics
    */
   async getCategoryAnalytics(params: {
-    organizationId: string;
+    organization_id: string;
     startDate?: string;
     endDate?: string;
     categoryId?: string;
   }): Promise<CategoryAnalytics> {
-    const { organizationId, startDate, endDate, categoryId } = params;
+    const { organization_id, startDate, endDate, categoryId } = params;
 
     let dateFilter = '';
     const queryParams: any[] = [organizationId];
@@ -438,7 +439,7 @@ export class CategoryService {
         ${categoryId ? 'AND c.id = ?' : ''}
       GROUP BY c.id, c.name, ts.total_amount
       ORDER BY total_amount DESC
-    `, categoryId ? [...queryParams, organizationId, organizationId, categoryId] : [...queryParams, organizationId, organizationId]);
+    `, categoryId ? [...queryParams, organization_id, organization_id, categoryId] : [...queryParams, organization_id, organizationId]);
 
     // Get time series data (monthly breakdown)
     const timeSeries = await knex.raw(`
@@ -501,7 +502,7 @@ export class CategoryService {
       LEFT JOIN previous_period pp ON cp.id = pp.id
       WHERE cp.current_amount > 0 OR pp.previous_amount > 0
       ORDER BY growth_rate DESC
-    `, [organizationId, organizationId, organizationId, organizationId]);
+    `, [organization_id, organization_id, organization_id, organizationId]);
 
     const topGrowing = trendData.rows
       .filter(row => row.growth_rate > 0)
@@ -533,13 +534,13 @@ export class CategoryService {
    * Bulk categorize transactions
    */
   async bulkCategorizeTransactions(params: {
-    organizationId: string;
-    transactionIds: string[];
+    organization_id: string;
+    transactionIds: any[];
     categoryId: string;
     userId: string;
     applyRules?: boolean;
-  }): Promise<{ updated_count: number; failed_count: number; errors: string[] }> {
-    const { organizationId, transactionIds, categoryId, userId, applyRules } = params;
+  }): Promise<{ updated_count: number; failed_count: number; errors: any[] }> {
+    const { organization_id, transactionIds, categoryId, userId, applyRules } = params;
 
     // Validate category exists
     const category = await knex('categories')
@@ -554,7 +555,7 @@ export class CategoryService {
 
     let updatedCount = 0;
     let failedCount = 0;
-    const errors: string[] = [];
+    const errors: any[] = [];
 
     for (const transactionId of transactionIds) {
       try {
@@ -587,7 +588,7 @@ export class CategoryService {
         }
 
       } catch (error) {
-        errors.push(`Failed to categorize transaction ${transactionId}: ${error.message}`);
+        errors.push(`Failed to categorize transaction ${transactionId}: ${getErrorMessage(error)}`);
         failedCount++;
       }
     }
@@ -595,7 +596,7 @@ export class CategoryService {
     await auditLogger.log({
       action: 'BULK_CATEGORIZE_TRANSACTIONS',
       resource_type: 'Transaction',
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         category_id: categoryId,
@@ -616,7 +617,7 @@ export class CategoryService {
   /**
    * Add usage statistics to categories
    */
-  private async addUsageStats(categories: any[], organizationId: string): Promise<Category[]> {
+  private async addUsageStats(categories: any[], organization_id: string): Promise<Category[]> {
     if (categories.length === 0) return [];
 
     const categoryIds = categories.map(c => c.id);
@@ -652,7 +653,7 @@ export class CategoryService {
   /**
    * Build hierarchical category structure
    */
-  private async buildHierarchy(rootCategories: Category[], organizationId: string): Promise<Category[]> {
+  private async buildHierarchy(rootCategories: Category[], organization_id: string): Promise<Category[]> {
     for (const category of rootCategories) {
       const children = await knex('categories')
         .where('parent_id', category.id)
@@ -675,7 +676,7 @@ export class CategoryService {
   private async wouldCreateCircularReference(
     categoryId: string, 
     parentId: string, 
-    organizationId: string
+    organization_id: string
   ): Promise<boolean> {
     let currentParentId = parentId;
     

@@ -9,6 +9,7 @@ import { authenticateToken } from '../../auth/middleware/authentication';
 import { requirePermissions } from '../../auth/middleware/authorization';
 import { validateRequest } from '../../middleware/validation';
 import { body, param, query } from 'express-validator';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const router = Router();
 const categoryService = new CategoryService();
@@ -30,10 +31,10 @@ router.get('/',
   async (req, res) => {
     try {
       const { include_hierarchy, parent_id, active_only } = req.query;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const categories = await categoryService.getCategories({
-        organizationId,
+        organization_id,
         includeHierarchy: include_hierarchy === 'true',
         parentId: parent_id as string,
         activeOnly: active_only !== 'false'
@@ -51,7 +52,7 @@ router.get('/',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch categories',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -69,7 +70,7 @@ router.get('/:id',
   async (req, res) => {
     try {
       const categoryId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const category = await categoryService.getCategoryById(categoryId, organizationId);
       
@@ -88,7 +89,7 @@ router.get('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch category',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -112,12 +113,12 @@ router.post('/',
   requirePermissions(['write_categories']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const categoryData = {
         ...req.body,
-        organizationId,
+        organization_id,
         createdBy: userId,
         updatedBy: userId
       };
@@ -130,18 +131,18 @@ router.post('/',
         message: 'Category created successfully'
       });
     } catch (error) {
-      if (error.message.includes('already exists')) {
+      if (getErrorMessage(error).includes('already exists')) {
         return res.status(409).json({
           success: false,
           error: 'Category name already exists',
-          message: error.message
+          message: getErrorMessage(error)
         });
       }
 
       res.status(500).json({
         success: false,
         error: 'Failed to create category',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -168,15 +169,15 @@ router.put('/:id',
   async (req, res) => {
     try {
       const categoryId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const updateData = {
         ...req.body,
         updatedBy: userId
       };
 
-      const category = await categoryService.updateCategory(categoryId, organizationId, updateData);
+      const category = await categoryService.updateCategory(categoryId, organization_id, updateData);
 
       if (!category) {
         return res.status(404).json({
@@ -194,7 +195,7 @@ router.put('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to update category',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -212,7 +213,7 @@ router.delete('/:id',
   async (req, res) => {
     try {
       const categoryId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const success = await categoryService.deleteCategory(categoryId, organizationId);
 
@@ -231,7 +232,7 @@ router.delete('/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to delete category',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -250,11 +251,11 @@ router.get('/analytics/usage',
   requirePermissions(['read_analytics']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { start_date, end_date, category_id } = req.query;
 
       const analytics = await categoryService.getCategoryAnalytics({
-        organizationId,
+        organization_id,
         startDate: start_date as string,
         endDate: end_date as string,
         categoryId: category_id as string
@@ -268,7 +269,7 @@ router.get('/analytics/usage',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch category analytics',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -280,7 +281,7 @@ router.get('/analytics/usage',
  */
 router.post('/bulk-categorize',
   validateRequest([
-    body('transaction_ids').isArray().custom((value) => {
+    body('transaction_ids').isArray().custom((value: any) => {
       return value.every((id: any) => typeof id === 'string');
     }),
     body('category_id').isUUID(),
@@ -289,12 +290,12 @@ router.post('/bulk-categorize',
   requirePermissions(['write_transactions']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { transaction_ids, category_id, apply_rules } = req.body;
 
       const result = await categoryService.bulkCategorizeTransactions({
-        organizationId,
+        organization_id,
         transactionIds: transaction_ids,
         categoryId: category_id,
         userId,
@@ -310,7 +311,7 @@ router.post('/bulk-categorize',
       res.status(500).json({
         success: false,
         error: 'Failed to bulk categorize transactions',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }

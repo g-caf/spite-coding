@@ -95,7 +95,7 @@ export function createReceiptRoutes(db: knex.Knex) {
         };
 
         const result = await receiptService.processUpload(
-          req.user.organizationId,
+          req.user.organization_id,
           req.user.id,
           req.file,
           metadata
@@ -103,7 +103,7 @@ export function createReceiptRoutes(db: knex.Knex) {
 
         logger.info(`Receipt upload processed`, {
           userId: req.user.id,
-          organizationId: req.user.organizationId,
+          organization_id: req.user.organization_id,
           result: result.status,
           receiptId: result.receiptId
         });
@@ -158,7 +158,7 @@ export function createReceiptRoutes(db: knex.Knex) {
 
         for (const file of req.files as Express.Multer.File[]) {
           const result = await receiptService.processUpload(
-            req.user.organizationId,
+            req.user.organization_id,
             req.user.id,
             file,
             metadata
@@ -172,7 +172,7 @@ export function createReceiptRoutes(db: knex.Knex) {
 
         logger.info(`Multiple receipt upload processed`, {
           userId: req.user.id,
-          organizationId: req.user.organizationId,
+          organization_id: req.user.organization_id,
           total: results.length,
           successful: successful.length,
           failed: failed.length,
@@ -225,12 +225,12 @@ export function createReceiptRoutes(db: knex.Knex) {
         };
 
         const results = await receiptService.processEmailReceipt(
-          req.user.organizationId,
+          req.user.organization_id,
           emailData
         );
 
         logger.info(`Email receipt processed`, {
-          organizationId: req.user.organizationId,
+          organization_id: req.user.organization_id,
           from: emailData.from,
           attachmentCount: emailData.attachments.length,
           processedCount: results.length
@@ -273,7 +273,7 @@ export function createReceiptRoutes(db: knex.Knex) {
     async (req: any, res: any, next: any) => {
       try {
         const params = {
-          organizationId: req.user.organizationId,
+          organization_id: req.user.organization_id,
           userId: req.query.userId,
           status: req.query.status,
           merchantName: req.query.merchant,
@@ -364,7 +364,7 @@ export function createReceiptRoutes(db: knex.Knex) {
       try {
         await receiptService.updateExtractedField(
           req.params.id,
-          req.user.organizationId,
+          req.user.organization_id,
           req.body.fieldName,
           req.body.fieldValue,
           req.user.id
@@ -447,14 +447,14 @@ export function createReceiptRoutes(db: knex.Knex) {
       try {
         await receiptService.deleteReceipt(
           req.params.id,
-          req.user.organizationId,
+          req.user.organization_id,
           req.user.id
         );
 
         logger.info(`Receipt deleted`, {
           receiptId: req.params.id,
           userId: req.user.id,
-          organizationId: req.user.organizationId
+          organization_id: req.user.organizationId
         });
 
         res.json({

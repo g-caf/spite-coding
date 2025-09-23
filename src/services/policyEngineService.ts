@@ -25,13 +25,13 @@ export interface PolicyRule {
 
 export interface PolicyConditions {
   // User and role conditions
-  user_ids?: string[];
-  roles?: string[];
-  departments?: string[];
+  user_ids?: any[];
+  roles?: any[];
+  departments?: any[];
   
   // Category conditions
-  category_ids?: string[];
-  category_types?: string[];
+  category_ids?: any[];
+  category_types?: any[];
   
   // Amount conditions
   amount_limits?: {
@@ -45,7 +45,7 @@ export interface PolicyConditions {
   time_restrictions?: {
     business_hours_only?: boolean;
     weekdays_only?: boolean;
-    blocked_dates?: string[];
+    blocked_dates?: any[];
     allowed_time_range?: {
       start: string; // HH:MM
       end: string;   // HH:MM
@@ -54,25 +54,25 @@ export interface PolicyConditions {
   
   // Merchant conditions
   merchant_restrictions?: {
-    blocked_merchants?: string[];
-    allowed_merchants?: string[];
-    blocked_categories?: string[];
-    require_pre_approval?: string[];
+    blocked_merchants?: any[];
+    allowed_merchants?: any[];
+    blocked_categories?: any[];
+    require_pre_approval?: any[];
   };
   
   // Receipt conditions
   receipt_requirements?: {
     threshold_amount?: number;
     always_required?: boolean;
-    categories_requiring_receipt?: string[];
+    categories_requiring_receipt?: any[];
     max_days_to_submit?: number;
   };
   
   // Location conditions
   location_restrictions?: {
-    allowed_countries?: string[];
-    blocked_countries?: string[];
-    require_justification?: string[];
+    allowed_countries?: any[];
+    blocked_countries?: any[];
+    require_justification?: any[];
   };
   
   // Frequency conditions
@@ -94,8 +94,8 @@ export interface PolicyEnforcement {
   // Notification actions
   notify_manager?: boolean;
   notify_compliance?: boolean;
-  notify_users?: string[];
-  escalate_to?: string[];
+  notify_users?: any[];
+  escalate_to?: any[];
   
   // Workflow actions
   auto_flag?: boolean;
@@ -105,7 +105,7 @@ export interface PolicyEnforcement {
   // Grace period
   grace_period_hours?: number;
   allow_override?: boolean;
-  override_roles?: string[];
+  override_roles?: any[];
 }
 
 export interface PolicyViolation {
@@ -164,16 +164,16 @@ export class PolicyEngineService {
   /**
    * Evaluate a transaction against all active policies
    */
-  async evaluateTransaction(transaction: any, organizationId: string, userId: string): Promise<{
+  async evaluateTransaction(transaction: any, organization_id: string, userId: string): Promise<{
     violations: PolicyViolation[];
-    warnings: string[];
-    actions_required: string[];
+    warnings: any[];
+    actions_required: any[];
     blocked: boolean;
     requires_approval: boolean;
   }> {
     const violations: PolicyViolation[] = [];
-    const warnings: string[] = [];
-    const actionsRequired: string[] = [];
+    const warnings: any[] = [];
+    const actionsRequired: any[] = [];
     let blocked = false;
     let requiresApproval = false;
 
@@ -190,11 +190,11 @@ export class PolicyEngineService {
         enforcement: JSON.parse(policy.enforcement)
       };
 
-      const evaluation = await this.evaluatePolicyRule(policyRule, transaction, organizationId, userId);
+      const evaluation = await this.evaluatePolicyRule(policyRule, transaction, organization_id, userId);
       
       if (evaluation.violates) {
         const violation = await this.createPolicyViolation({
-          organizationId,
+          organization_id,
           transactionId: transaction.id,
           policyRuleId: policy.id,
           violationType: evaluation.violation_type,
@@ -284,11 +284,11 @@ export class PolicyEngineService {
    * Get compliance report for an organization
    */
   async generateComplianceReport(params: {
-    organizationId: string;
+    organization_id: string;
     startDate: string;
     endDate: string;
   }): Promise<ComplianceReport> {
-    const { organizationId, startDate, endDate } = params;
+    const { organization_id, startDate, endDate } = params;
 
     // Summary statistics
     const summary = await knex.raw(`
@@ -307,7 +307,7 @@ export class PolicyEngineService {
       LEFT JOIN receipts r ON m.receipt_id = r.id
       WHERE t.organization_id = ?
       AND t.transaction_date BETWEEN ? AND ?
-    `, [organizationId, startDate, endDate]);
+    `, [organization_id, startDate, endDate]);
 
     // Violation breakdown
     const violationBreakdown = await knex.raw(`
@@ -327,7 +327,7 @@ export class PolicyEngineService {
       WHERE pr.organization_id = ?
       GROUP BY pr.policy_type
       ORDER BY violation_count DESC
-    `, [startDate, endDate, organizationId, startDate, endDate, organizationId]);
+    `, [startDate, endDate, organization_id, startDate, endDate, organizationId]);
 
     // Top violators
     const topViolators = await knex.raw(`
@@ -346,7 +346,7 @@ export class PolicyEngineService {
       HAVING COUNT(pv.id) > 0
       ORDER BY violation_count DESC
       LIMIT 10
-    `, [organizationId, startDate, endDate]);
+    `, [organization_id, startDate, endDate]);
 
     // Policy effectiveness
     const policyEffectiveness = await knex.raw(`
@@ -369,7 +369,7 @@ export class PolicyEngineService {
     `, [startDate, endDate, organizationId]);
 
     return {
-      organization_id: organizationId,
+      organization_id: organization_id,
       report_period: {
         start_date: startDate,
         end_date: endDate
@@ -386,12 +386,12 @@ export class PolicyEngineService {
    */
   async resolvePolicyViolation(params: {
     violationId: string;
-    organizationId: string;
+    organization_id: string;
     userId: string;
     resolution: 'resolved' | 'false_positive';
     notes?: string;
   }): Promise<PolicyViolation> {
-    const { violationId, organizationId, userId, resolution, notes } = params;
+    const { violationId, organization_id, userId, resolution, notes } = params;
 
     const [violation] = await knex('policy_violations')
       .where('id', violationId)
@@ -413,7 +413,7 @@ export class PolicyEngineService {
       action: 'RESOLVE_POLICY_VIOLATION',
       resource_type: 'PolicyViolation',
       resource_id: violationId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         resolution,
@@ -427,7 +427,7 @@ export class PolicyEngineService {
   /**
    * Get policy dashboard data
    */
-  async getPolicyDashboard(organizationId: string): Promise<{
+  async getPolicyDashboard(organization_id: string): Promise<{
     active_policies: number;
     recent_violations: PolicyViolation[];
     compliance_trends: Array<{
@@ -443,7 +443,7 @@ export class PolicyEngineService {
     }>;
   }> {
     // Active policies count
-    const activePoliciesCount = await knex('policy_rules')
+    const activePoliciesCount! = await knex('policy_rules')
       .where('organization_id', organizationId)
       .where('active', true)
       .count('id as count')
@@ -508,7 +508,7 @@ export class PolicyEngineService {
     `, [organizationId]);
 
     return {
-      active_policies: parseInt(activePoliciesCount.count),
+      active_policies: parseInt((activePoliciesCount! as any)?.count || "0"),
       recent_violations: recentViolations,
       compliance_trends: complianceTrends.rows.map(row => ({
         date: row.date,
@@ -526,7 +526,7 @@ export class PolicyEngineService {
   private async evaluatePolicyRule(
     policyRule: PolicyRule,
     transaction: any,
-    organizationId: string,
+    organization_id: string,
     userId: string
   ): Promise<{
     violates: boolean;
@@ -608,7 +608,7 @@ export class PolicyEngineService {
     limits: any,
     transaction: any,
     userId: string,
-    organizationId: string
+    organization_id: string
   ): Promise<{ violates: boolean; description?: string; details?: any }> {
     const amount = Math.abs(transaction.amount);
 
@@ -623,14 +623,14 @@ export class PolicyEngineService {
 
     // Check daily limit
     if (limits.daily) {
-      const todaySpending = await knex('transactions')
+      const todaySpending! = await knex('transactions')
         .where('organization_id', organizationId)
         .where('created_by', userId)
         .where('transaction_date', '>=', knex.raw('CURRENT_DATE'))
         .sum('amount as total')
         .first();
 
-      const totalToday = Math.abs(parseFloat(todaySpending.total) || 0) + amount;
+      const totalToday = Math.abs(parseFloat(todaySpending!.total) || 0) + amount;
       if (totalToday > limits.daily) {
         return {
           violates: true,
@@ -642,14 +642,14 @@ export class PolicyEngineService {
 
     // Check weekly limit
     if (limits.weekly) {
-      const weekSpending = await knex('transactions')
+      const weekSpending! = await knex('transactions')
         .where('organization_id', organizationId)
         .where('created_by', userId)
         .where('transaction_date', '>=', knex.raw('DATE_TRUNC(\'week\', CURRENT_DATE)'))
         .sum('amount as total')
         .first();
 
-      const totalWeek = Math.abs(parseFloat(weekSpending.total) || 0) + amount;
+      const totalWeek = Math.abs(parseFloat(weekSpending!.total) || 0) + amount;
       if (totalWeek > limits.weekly) {
         return {
           violates: true,
@@ -661,14 +661,14 @@ export class PolicyEngineService {
 
     // Check monthly limit
     if (limits.monthly) {
-      const monthSpending = await knex('transactions')
+      const monthSpending! = await knex('transactions')
         .where('organization_id', organizationId)
         .where('created_by', userId)
         .where('transaction_date', '>=', knex.raw('DATE_TRUNC(\'month\', CURRENT_DATE)'))
         .sum('amount as total')
         .first();
 
-      const totalMonth = Math.abs(parseFloat(monthSpending.total) || 0) + amount;
+      const totalMonth = Math.abs(parseFloat(monthSpending!.total) || 0) + amount;
       if (totalMonth > limits.monthly) {
         return {
           violates: true,
@@ -808,7 +808,7 @@ export class PolicyEngineService {
   }
 
   private async createPolicyViolation(params: {
-    organizationId: string;
+    organization_id: string;
     transactionId: string;
     policyRuleId: string;
     violationType: string;
@@ -818,7 +818,7 @@ export class PolicyEngineService {
   }): Promise<PolicyViolation> {
     const [violation] = await knex('policy_violations')
       .insert({
-        organization_id: params.organizationId,
+        organization_id: params.organization_id,
         transaction_id: params.transactionId,
         policy_rule_id: params.policyRuleId,
         violation_type: params.violationType,

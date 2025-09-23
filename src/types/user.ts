@@ -18,7 +18,12 @@ export interface User {
 declare global {
   namespace Express {
     interface Request {
-      user?: User;
+      user?: {
+        id: string;
+        email: string;
+        organization_id: string;
+        role: string;
+      };
       organizationId?: string;
     }
   }

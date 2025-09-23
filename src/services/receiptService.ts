@@ -11,6 +11,7 @@ import knex from 'knex';
 import { OCRService, OCRResult, ExtractedField } from './ocrService';
 import { EmailService } from './emailService';
 import { DuplicateDetectionService } from './duplicateDetectionService';
+import { getErrorMessage } from '../utils/errorHandling';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -26,7 +27,7 @@ const logger = winston.createLogger({
 
 export interface ReceiptUpload {
   id: string;
-  organizationId: string;
+  organization_id: string;
   uploadedBy: string;
   originalFilename: string;
   filePath: string;
@@ -47,7 +48,7 @@ export interface ProcessingResult {
 }
 
 export interface ReceiptSearchParams {
-  organizationId: string;
+  organization_id: string;
   userId?: string;
   status?: string;
   merchantName?: string;
@@ -55,7 +56,7 @@ export interface ReceiptSearchParams {
   dateTo?: Date;
   amountMin?: number;
   amountMax?: number;
-  tags?: string[];
+  tags?: any[];
   limit?: number;
   offset?: number;
 }
@@ -68,7 +69,7 @@ export interface ReceiptSearchResult {
 
 export interface ReceiptWithDetails {
   id: string;
-  organizationId: string;
+  organization_id: string;
   uploadedBy: string;
   uploaderName: string;
   originalFilename: string;
@@ -105,7 +106,7 @@ export class ReceiptService {
    * Process uploaded receipt file
    */
   async processUpload(
-    organizationId: string,
+    organization_id: string,
     uploadedBy: string,
     file: Express.Multer.File,
     metadata: Record<string, any> = {}
@@ -116,7 +117,7 @@ export class ReceiptService {
     try {
       logger.info(`Starting receipt processing`, {
         receiptId,
-        organizationId,
+        organization_id,
         uploadedBy,
         filename: file.originalname,
         size: file.size,
@@ -128,7 +129,7 @@ export class ReceiptService {
 
       // Check for duplicates
       const duplicateCheck = await this.duplicateDetectionService.checkForDuplicate(
-        organizationId,
+        organization_id,
         fileHash,
         file.originalname,
         file.size
@@ -151,7 +152,7 @@ export class ReceiptService {
       // Create receipt record
       const receipt = await this.createReceiptRecord({
         id: receiptId,
-        organizationId,
+        organization_id,
         uploadedBy,
         originalFilename: file.originalname,
         filePath: file.path || (file as any).key || '',
@@ -168,13 +169,13 @@ export class ReceiptService {
       // Process with OCR
       const ocrResult = await this.ocrService.processReceipt(
         receiptId,
-        organizationId,
+        organization_id,
         receipt.filePath,
         receipt.fileType
       );
 
       // Save extracted fields
-      await this.saveExtractedFields(receiptId, organizationId, ocrResult.extractedFields);
+      await this.saveExtractedFields(receiptId, organization_id, ocrResult.extractedFields);
 
       // Update receipt with OCR results
       await this.updateReceiptWithOCRResults(receiptId, ocrResult);
@@ -184,7 +185,7 @@ export class ReceiptService {
 
       // Trigger automatic matching (async)
       this.triggerAutomaticMatching(receiptId, organizationId).catch(error => {
-        logger.error(`Automatic matching failed for receipt ${receiptId}`, { error: error.message });
+        logger.error(`Automatic matching failed for receipt ${receiptId}`, { error: getErrorMessage(error) });
       });
 
       logger.info(`Receipt processing completed successfully`, {
@@ -203,7 +204,7 @@ export class ReceiptService {
     } catch (error) {
       logger.error(`Receipt processing failed`, {
         receiptId,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown error',
         processingTime: Date.now() - startTime
       });
 
@@ -211,12 +212,12 @@ export class ReceiptService {
       await this.updateReceiptStatus(receiptId, 'failed').catch(() => {});
 
       // Save error details
-      await this.saveProcessingError(receiptId, error instanceof Error ? error.message : 'Unknown error');
+      await this.saveProcessingError(receiptId, error instanceof Error ? getErrorMessage(error) : 'Unknown error');
 
       return {
         receiptId,
         status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown error',
         processingTime: Date.now() - startTime
       };
     }
@@ -226,7 +227,7 @@ export class ReceiptService {
    * Process receipt from email
    */
   async processEmailReceipt(
-    organizationId: string,
+    organization_id: string,
     emailData: {
       from: string;
       subject: string;
@@ -235,7 +236,7 @@ export class ReceiptService {
     }
   ): Promise<ProcessingResult[]> {
     logger.info(`Processing email receipt`, {
-      organizationId,
+      organization_id,
       from: emailData.from,
       attachmentCount: emailData.attachments.length
     });
@@ -261,7 +262,7 @@ export class ReceiptService {
           emailBody: emailData.body.substring(0, 1000) // First 1000 chars
         };
 
-        const result = await this.processUpload(organizationId, user.id, attachment, metadata);
+        const result = await this.processUpload(organization_id, user.id, attachment, metadata);
         results.push(result);
       }
     }
@@ -286,7 +287,7 @@ export class ReceiptService {
       .leftJoin('matches as m', function() {
         this.on('r.id', '=', 'm.receipt_id').andOn('m.active', '=', true);
       })
-      .where('r.organization_id', params.organizationId)
+      .where('r.organization_id', params.organization_id)
       .select(
         'r.*',
         'u.name as uploader_name',
@@ -342,7 +343,7 @@ export class ReceiptService {
 
     // Fetch extracted fields for each receipt
     const receiptsWithDetails = await Promise.all(
-      receipts.map(async (receipt) => {
+      receipts.map(async (receipt: any) => {
         const extractedFields = await this.getExtractedFields(receipt.id);
         
         return {
@@ -363,7 +364,7 @@ export class ReceiptService {
   /**
    * Get receipt details by ID
    */
-  async getReceiptById(receiptId: string, organizationId: string): Promise<ReceiptWithDetails | null> {
+  async getReceiptById(receiptId: string, organization_id: string): Promise<ReceiptWithDetails | null> {
     const receipt = await this.db('receipts as r')
       .leftJoin('users as u', 'r.uploaded_by', 'u.id')
       .leftJoin('matches as m', function() {
@@ -396,7 +397,7 @@ export class ReceiptService {
    */
   async updateExtractedField(
     receiptId: string,
-    organizationId: string,
+    organization_id: string,
     fieldName: string,
     fieldValue: string,
     userId: string
@@ -404,7 +405,7 @@ export class ReceiptService {
     await this.db('extracted_fields')
       .where({
         receipt_id: receiptId,
-        organization_id: organizationId,
+        organization_id: organization_id,
         field_name: fieldName
       })
       .update({
@@ -443,14 +444,14 @@ export class ReceiptService {
       receiptId,
       fieldName,
       fieldValue,
-      updatedBy: userId
+      updated_by: userId
     });
   }
 
   /**
    * Delete receipt
    */
-  async deleteReceipt(receiptId: string, organizationId: string, userId: string): Promise<void> {
+  async deleteReceipt(receiptId: string, organization_id: string, userId: string): Promise<void> {
     const receipt = await this.db('receipts')
       .where({ id: receiptId, organization_id: organizationId })
       .first();
@@ -469,7 +470,7 @@ export class ReceiptService {
 
     logger.info(`Receipt deleted`, {
       receiptId,
-      organizationId,
+      organization_id,
       deletedBy: userId
     });
   }
@@ -477,10 +478,10 @@ export class ReceiptService {
   /**
    * Get processing status
    */
-  async getProcessingStatus(receiptId: string, organizationId: string): Promise<{
+  async getProcessingStatus(receiptId: string, organization_id: string): Promise<{
     status: string;
     progress?: number;
-    processingErrors?: string[];
+    processingErrors?: any[];
     lastUpdated: Date;
   }> {
     const receipt = await this.db('receipts')
@@ -506,7 +507,7 @@ export class ReceiptService {
     const [created] = await this.db('receipts')
       .insert({
         id: receipt.id,
-        organization_id: receipt.organizationId,
+        organization_id: receipt.organization_id,
         uploaded_by: receipt.uploadedBy,
         original_filename: receipt.originalFilename,
         file_path: receipt.filePath,
@@ -556,12 +557,12 @@ export class ReceiptService {
 
   private async saveExtractedFields(
     receiptId: string, 
-    organizationId: string, 
+    organization_id: string, 
     fields: ExtractedField[]
   ): Promise<void> {
     const fieldRecords = fields.map(field => ({
       id: uuidv4(),
-      organization_id: organizationId,
+      organization_id: organization_id,
       receipt_id: receiptId,
       field_name: field.fieldName,
       field_value: field.fieldValue,
@@ -634,7 +635,7 @@ export class ReceiptService {
     return validMimeTypes.includes(file.mimetype) && file.size > 0;
   }
 
-  private async triggerAutomaticMatching(receiptId: string, organizationId: string): Promise<void> {
+  private async triggerAutomaticMatching(receiptId: string, organization_id: string): Promise<void> {
     // This would trigger the automatic matching logic
     // Implementation depends on your transaction matching requirements
     logger.info(`Triggering automatic matching for receipt ${receiptId}`);

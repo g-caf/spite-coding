@@ -23,9 +23,9 @@ export class PlaidIntegration {
   private config: PlaidConfig;
   private encryptionKey: string;
 
-  public plaidService: PlaidService;
-  public syncJobProcessor: SyncJobProcessor;
-  public webhookHandler: PlaidWebhookHandler;
+  public plaidService!: PlaidService;
+  public syncJobProcessor!: SyncJobProcessor;
+  public webhookHandler!: PlaidWebhookHandler;
 
   constructor(
     db: Knex,

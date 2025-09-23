@@ -19,6 +19,9 @@ export {
   requireResource 
 };
 
+// Export authMiddleware alias for backwards compatibility
+export const authMiddleware = AuthenticationMiddleware;
+
 // Common middleware combinations
 export const requireAuthAndPermission = (permission: string) => {
   return [

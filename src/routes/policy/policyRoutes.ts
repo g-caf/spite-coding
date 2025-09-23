@@ -10,6 +10,7 @@ import { requirePermissions } from '../../auth/middleware/authorization';
 import { validateRequest } from '../../middleware/validation';
 import { body, param, query } from 'express-validator';
 import { knex } from '../../utils/database';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const router = Router();
 const policyEngineService = new PolicyEngineService();
@@ -33,7 +34,7 @@ router.get('/rules',
   requirePermissions(['read_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { policy_type, active_only, severity } = req.query;
 
       const rules = await knex('policy_rules')
@@ -58,7 +59,7 @@ router.get('/rules',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch policy rules',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -84,12 +85,12 @@ router.post('/rules',
   requirePermissions(['write_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const policyRule = await policyEngineService.createPolicyRule({
         ...req.body,
-        organization_id: organizationId,
+        organization_id: organization_id,
         created_by: userId,
         updated_by: userId
       });
@@ -103,7 +104,7 @@ router.post('/rules',
       res.status(500).json({
         success: false,
         error: 'Failed to create policy rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -127,8 +128,8 @@ router.put('/rules/:id',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
 
       const updateData = {
         ...req.body,
@@ -166,7 +167,7 @@ router.put('/rules/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to update policy rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -184,7 +185,7 @@ router.delete('/rules/:id',
   async (req, res) => {
     try {
       const ruleId = req.params.id;
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const updated = await knex('policy_rules')
         .where('id', ruleId)
@@ -209,7 +210,7 @@ router.delete('/rules/:id',
       res.status(500).json({
         success: false,
         error: 'Failed to delete policy rule',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -232,7 +233,7 @@ router.get('/violations',
   requirePermissions(['read_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { status, severity, violation_type, start_date, end_date, limit, offset } = req.query;
 
       let query = knex('policy_violations as pv')
@@ -283,17 +284,17 @@ router.get('/violations',
           violation_details: JSON.parse(violation.violation_details || '{}')
         })),
         meta: {
-          total: parseInt(total.count),
+          total: parseInt((total as any)?.count || "0"),
           limit: parseInt(limit as string),
           offset: parseInt(offset as string),
-          has_more: parseInt(offset as string) + violations.length < parseInt(total.count)
+          has_more: parseInt((offset as string) + violations.length < parseInt(total as any)?.count || "0")
         }
       });
     } catch (error) {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch policy violations',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -313,13 +314,13 @@ router.put('/violations/:id/resolve',
   async (req, res) => {
     try {
       const violationId = req.params.id;
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { resolution, notes } = req.body;
 
       const violation = await policyEngineService.resolvePolicyViolation({
         violationId,
-        organizationId,
+        organization_id,
         userId,
         resolution,
         notes
@@ -334,7 +335,7 @@ router.put('/violations/:id/resolve',
       res.status(500).json({
         success: false,
         error: 'Failed to resolve policy violation',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -352,11 +353,11 @@ router.get('/compliance/report',
   requirePermissions(['read_analytics']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { start_date, end_date } = req.query;
 
       const report = await policyEngineService.generateComplianceReport({
-        organizationId,
+        organization_id,
         startDate: start_date as string,
         endDate: end_date as string
       });
@@ -369,7 +370,7 @@ router.get('/compliance/report',
       res.status(500).json({
         success: false,
         error: 'Failed to generate compliance report',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -383,7 +384,7 @@ router.get('/dashboard',
   requirePermissions(['read_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
 
       const dashboard = await policyEngineService.getPolicyDashboard(organizationId);
 
@@ -395,7 +396,7 @@ router.get('/dashboard',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch policy dashboard',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -412,8 +413,8 @@ router.post('/evaluate',
   requirePermissions(['read_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const { transaction_id } = req.body;
 
       // Get transaction
@@ -431,7 +432,7 @@ router.post('/evaluate',
 
       const evaluation = await policyEngineService.evaluateTransaction(
         transaction,
-        organizationId,
+        organization_id,
         userId
       );
 
@@ -443,7 +444,7 @@ router.post('/evaluate',
       res.status(500).json({
         success: false,
         error: 'Failed to evaluate transaction',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -461,9 +462,9 @@ router.get('/spending-limits',
   requirePermissions(['read_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
+      const organizationId = req.user!.organization_id;
       const { user_id, limit_type } = req.query;
-      const targetUserId = user_id || req.user.id;
+      const targetUserId = user_id || req.user!.id;
 
       let query = knex('spending_limits as sl')
         .select(
@@ -498,7 +499,7 @@ router.get('/spending-limits',
       res.status(500).json({
         success: false,
         error: 'Failed to fetch spending limits',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }
@@ -522,8 +523,8 @@ router.post('/spending-limits',
   requirePermissions(['write_policies']),
   async (req, res) => {
     try {
-      const organizationId = req.user.organization_id;
-      const userId = req.user.id;
+      const organizationId = req.user!.organization_id;
+      const userId = req.user!.id;
       const {
         user_id,
         category_id,
@@ -564,7 +565,7 @@ router.post('/spending-limits',
 
       const [spendingLimit] = await knex('spending_limits')
         .insert({
-          organization_id: organizationId,
+          organization_id: organization_id,
           user_id: user_id || userId,
           category_id,
           department_id,
@@ -590,7 +591,7 @@ router.post('/spending-limits',
       res.status(500).json({
         success: false,
         error: 'Failed to create spending limit',
-        message: error.message
+        message: getErrorMessage(error)
       });
     }
   }

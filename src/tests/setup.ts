@@ -137,7 +137,7 @@ jest.mock('nodemailer', () => ({
 }));
 
 // Global test utilities
-global.testUtils = {
+(global as any).testUtils = {
   createMockFile: (name: string, type: string, size: number) => ({
     fieldname: 'file',
     originalname: name,
@@ -167,23 +167,6 @@ global.testUtils = {
   sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 };
 
-// Extend Jest matchers
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeValidUUID(): R;
-      toBeValidDate(): R;
-      toBePositiveNumber(): R;
-    }
-  }
-
-  var testUtils: {
-    createMockFile: (name: string, type: string, size: number) => any;
-    createMockUser: (overrides?: any) => any;
-    sleep: (ms: number) => Promise<void>;
-  };
-}
-
 // Custom Jest matchers
 expect.extend({
   toBeValidUUID(received: any) {
@@ -209,8 +192,17 @@ expect.extend({
     const pass = typeof received === 'number' && received > 0;
     
     return {
-      message: () => `expected ${received} to be a positive number`,
+      message: () => `expected ${received} to be a valid Number`,
       pass
     };
   }
 });
+
+// Type declarations for Jest matchers
+declare module '@jest/expect' {
+  interface Matchers<R> {
+    toBeValidUUID(): R;
+    toBeValidDate(): R;
+    toBePositiveNumber(): R;
+  }
+}

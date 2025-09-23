@@ -6,6 +6,7 @@
 import { knex } from '../utils/database';
 import { auditLogger } from '../utils/audit';
 import { RuleEngineService } from './ruleEngineService';
+import { getErrorMessage } from '../utils/errorHandling';
 
 interface CategorySuggestion {
   id: string;
@@ -13,7 +14,7 @@ interface CategorySuggestion {
   category_name: string;
   confidence_score: number;
   reasoning: {
-    primary_factors: string[];
+    primary_factors: any[];
     similar_transactions: number;
     merchant_history: boolean;
     amount_pattern: boolean;
@@ -26,7 +27,7 @@ interface CategorizationResult {
   transaction_id: string;
   category_id: string;
   confidence_score: number;
-  applied_rules: string[];
+  applied_rules: any[];
   suggestions_used: number;
   processing_time_ms: number;
 }
@@ -79,12 +80,12 @@ export class TransactionCategorizationService {
   async categorizeTransaction(params: {
     transactionId: string;
     categoryId: string;
-    organizationId: string;
+    organization_id: string;
     userId: string;
     applyRules?: boolean;
     confidenceOverride?: number;
   }): Promise<CategorizationResult> {
-    const { transactionId, categoryId, organizationId, userId, applyRules, confidenceOverride } = params;
+    const { transactionId, categoryId, organization_id, userId, applyRules, confidenceOverride } = params;
     const startTime = Date.now();
 
     // Verify transaction exists and belongs to organization
@@ -117,7 +118,7 @@ export class TransactionCategorizationService {
         updated_at: knex.fn.now()
       });
 
-    let appliedRules: string[] = [];
+    let appliedRules: any[] = [];
     let suggestionsUsed = 0;
 
     // Apply additional rules if requested
@@ -145,7 +146,7 @@ export class TransactionCategorizationService {
       action: 'CATEGORIZE_TRANSACTION',
       resource_type: 'Transaction',
       resource_id: transactionId,
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         category_id: categoryId,
@@ -170,10 +171,10 @@ export class TransactionCategorizationService {
    */
   async getCategorySuggestions(params: {
     transactionId: string;
-    organizationId: string;
+    organization_id: string;
     limit?: number;
   }): Promise<CategorySuggestion[]> {
-    const { transactionId, organizationId, limit = 5 } = params;
+    const { transactionId, organization_id, limit = 5 } = params;
 
     const transaction = await knex('transactions')
       .where('id', transactionId)
@@ -226,7 +227,7 @@ export class TransactionCategorizationService {
       .slice(0, limit);
 
     // Store suggestions for future reference
-    await this.storeCategorySuggestions(transactionId, organizationId, topSuggestions);
+    await this.storeCategorySuggestions(transactionId, organization_id, topSuggestions);
 
     return topSuggestions;
   }
@@ -235,9 +236,9 @@ export class TransactionCategorizationService {
    * Auto-categorize multiple transactions
    */
   async autoCategorizeTransactions(params: {
-    organizationId: string;
+    organization_id: string;
     userId: string;
-    transactionIds?: string[];
+    transactionIds?: any[];
     dateRange?: { start: string; end: string };
     confidenceThreshold?: number;
     dryRun?: boolean;
@@ -253,7 +254,7 @@ export class TransactionCategorizationService {
       reason?: string;
     }>;
   }> {
-    const { organizationId, userId, transactionIds, dateRange, confidenceThreshold = 0.8, dryRun = true } = params;
+    const { organization_id, userId, transactionIds, dateRange, confidenceThreshold = 0.8, dryRun = true } = params;
 
     let query = knex('transactions')
       .where('organization_id', organizationId)
@@ -298,7 +299,7 @@ export class TransactionCategorizationService {
           await this.categorizeTransaction({
             transactionId: transaction.id,
             categoryId: bestSuggestion.category_id,
-            organizationId,
+            organization_id,
             userId,
             confidenceOverride: bestSuggestion.confidence_score
           });
@@ -318,7 +319,7 @@ export class TransactionCategorizationService {
           transaction_id: transaction.id,
           confidence_score: 0,
           status: 'failed',
-          reason: error.message
+          reason: getErrorMessage(error)
         });
       }
     }
@@ -326,7 +327,7 @@ export class TransactionCategorizationService {
     await auditLogger.log({
       action: 'AUTO_CATEGORIZE_TRANSACTIONS',
       resource_type: 'Transaction',
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         total_processed: transactions.length,
@@ -351,11 +352,11 @@ export class TransactionCategorizationService {
    */
   async acceptCategorySuggestion(params: {
     suggestionId: string;
-    organizationId: string;
+    organization_id: string;
     userId: string;
     feedback?: string;
   }): Promise<CategorizationResult> {
-    const { suggestionId, organizationId, userId, feedback } = params;
+    const { suggestionId, organization_id, userId, feedback } = params;
 
     const suggestion = await knex('category_suggestions')
       .where('id', suggestionId)
@@ -370,14 +371,14 @@ export class TransactionCategorizationService {
     const result = await this.categorizeTransaction({
       transactionId: suggestion.transaction_id,
       categoryId: suggestion.suggested_category_id,
-      organizationId,
+      organization_id,
       userId
     });
 
     // Record feedback
     if (feedback) {
       await knex('rule_feedback').insert({
-        organization_id: organizationId,
+        organization_id: organization_id,
         transaction_id: suggestion.transaction_id,
         expected_category_id: suggestion.suggested_category_id,
         correction_type: 'category',
@@ -398,11 +399,11 @@ export class TransactionCategorizationService {
   async rejectCategorySuggestion(params: {
     suggestionId: string;
     correctCategoryId?: string;
-    organizationId: string;
+    organization_id: string;
     userId: string;
     feedback?: string;
   }): Promise<{ success: boolean; learning_applied: boolean }> {
-    const { suggestionId, correctCategoryId, organizationId, userId, feedback } = params;
+    const { suggestionId, correctCategoryId, organization_id, userId, feedback } = params;
 
     const suggestion = await knex('category_suggestions')
       .where('id', suggestionId)
@@ -418,14 +419,14 @@ export class TransactionCategorizationService {
       await this.categorizeTransaction({
         transactionId: suggestion.transaction_id,
         categoryId: correctCategoryId,
-        organizationId,
+        organization_id,
         userId
       });
     }
 
     // Record negative feedback
     await knex('rule_feedback').insert({
-      organization_id: organizationId,
+      organization_id: organization_id,
       transaction_id: suggestion.transaction_id,
       expected_category_id: correctCategoryId || suggestion.suggested_category_id,
       correction_type: 'category',
@@ -446,7 +447,7 @@ export class TransactionCategorizationService {
    * Get uncategorized transactions with suggestions
    */
   async getUncategorizedTransactions(params: {
-    organizationId: string;
+    organization_id: string;
     limit?: number;
     offset?: number;
     includeSuggestions?: boolean;
@@ -455,7 +456,7 @@ export class TransactionCategorizationService {
     total: number;
     hasMore: boolean;
   }> {
-    const { organizationId, limit = 20, offset = 0, includeSuggestions = true } = params;
+    const { organization_id, limit = 20, offset = 0, includeSuggestions = true } = params;
 
     const totalQuery = knex('transactions')
       .where('organization_id', organizationId)
@@ -471,7 +472,7 @@ export class TransactionCategorizationService {
       .offset(offset);
 
     const [totalResult, transactions] = await Promise.all([totalQuery, transactionsQuery]);
-    const total = parseInt(totalResult.count);
+    const total = parseInt((totalResult as any)?.count || "0");
 
     // Add suggestions if requested
     if (includeSuggestions) {
@@ -479,7 +480,7 @@ export class TransactionCategorizationService {
         try {
           transaction.suggestions = await this.getCategorySuggestions({
             transactionId: transaction.id,
-            organizationId,
+            organization_id,
             limit: 3
           });
         } catch (error) {
@@ -499,12 +500,12 @@ export class TransactionCategorizationService {
    * Get categorization analytics
    */
   async getCategorizationAnalytics(params: {
-    organizationId: string;
+    organization_id: string;
     startDate?: string;
     endDate?: string;
     includeAccuracy?: boolean;
   }): Promise<CategorizationAnalytics> {
-    const { organizationId, startDate, endDate, includeAccuracy = true } = params;
+    const { organization_id, startDate, endDate, includeAccuracy = true } = params;
 
     let dateFilter = '';
     const queryParams: any[] = [organizationId];
@@ -630,12 +631,12 @@ export class TransactionCategorizationService {
    * Train categorization model with recent data
    */
   async trainModel(params: {
-    organizationId: string;
+    organization_id: string;
     userId: string;
     modelType?: string;
     trainingPeriodDays?: number;
   }): Promise<{ training_started: boolean; model_id: string; estimated_completion: string }> {
-    const { organizationId, userId, modelType = 'ml_classification', trainingPeriodDays = 90 } = params;
+    const { organization_id, userId, modelType = 'ml_classification', trainingPeriodDays = 90 } = params;
 
     // This would integrate with actual ML training pipeline
     // For now, we'll simulate the training process
@@ -653,7 +654,7 @@ export class TransactionCategorizationService {
 
     // Create training job record
     const [trainingJob] = await knex('ml_training_jobs').insert({
-      organization_id: organizationId,
+      organization_id: organization_id,
       model_type: modelType,
       status: 'started',
       training_data_count: trainingData.length,
@@ -666,7 +667,7 @@ export class TransactionCategorizationService {
       action: 'START_MODEL_TRAINING',
       resource_type: 'MLModel',
       resource_id: trainingJob.id,
-      organization_id: organizationId,
+      organization_id: organization_id,
       user_id: userId,
       details: {
         model_type: modelType,
@@ -686,7 +687,7 @@ export class TransactionCategorizationService {
    * Private helper methods
    */
 
-  private async getRuleBasedSuggestions(transaction: any, organizationId: string): Promise<CategorySuggestion[]> {
+  private async getRuleBasedSuggestions(transaction: any, organization_id: string): Promise<CategorySuggestion[]> {
     const activeRules = await knex('rules')
       .where('organization_id', organizationId)
       .where('active', true)
@@ -704,7 +705,7 @@ export class TransactionCategorizationService {
       // Simple rule matching (can be enhanced)
       let matches = 0;
       let totalConditions = 0;
-      const factors: string[] = [];
+      const factors: any[] = [];
 
       if (conditions.merchant_names) {
         totalConditions++;
@@ -754,7 +755,7 @@ export class TransactionCategorizationService {
     return suggestions;
   }
 
-  private async getMerchantHistorySuggestions(transaction: any, organizationId: string): Promise<CategorySuggestion[]> {
+  private async getMerchantHistorySuggestions(transaction: any, organization_id: string): Promise<CategorySuggestion[]> {
     if (!transaction.merchant_name) return [];
 
     const merchantHistory = await knex('transactions as t')
@@ -782,7 +783,7 @@ export class TransactionCategorizationService {
     }));
   }
 
-  private async getSimilarityBasedSuggestions(transaction: any, organizationId: string): Promise<CategorySuggestion[]> {
+  private async getSimilarityBasedSuggestions(transaction: any, organization_id: string): Promise<CategorySuggestion[]> {
     // Find similar transactions based on amount and description
     const similarTransactions = await knex.raw(`
       SELECT 
@@ -804,7 +805,7 @@ export class TransactionCategorizationService {
     `, [
       transaction.amount,
       transaction.description,
-      organizationId,
+      organization_id,
       transaction.id,
       transaction.amount,
       Math.abs(transaction.amount),
@@ -827,7 +828,7 @@ export class TransactionCategorizationService {
     }));
   }
 
-  private async getMLBasedSuggestions(transaction: any, organizationId: string): Promise<CategorySuggestion[]> {
+  private async getMLBasedSuggestions(transaction: any, organization_id: string): Promise<CategorySuggestion[]> {
     // Placeholder for actual ML model integration
     // Would use TensorFlow.js, scikit-learn API, or cloud ML service
 
@@ -870,11 +871,11 @@ export class TransactionCategorizationService {
 
   private async storeCategorySuggestions(
     transactionId: string,
-    organizationId: string,
+    organization_id: string,
     suggestions: CategorySuggestion[]
   ): Promise<void> {
     const records = suggestions.map(suggestion => ({
-      organization_id: organizationId,
+      organization_id: organization_id,
       transaction_id: transactionId,
       suggested_category_id: suggestion.category_id,
       confidence_score: suggestion.confidence_score,
@@ -905,13 +906,13 @@ export class TransactionCategorizationService {
    */
 
   async bulkRecategorize(params: {
-    organizationId: string;
+    organization_id: string;
     userId: string;
     categoryMapping: Record<string, string>;
     applyToFuture?: boolean;
     dateRange?: { start: string; end: string };
   }): Promise<{ updated_count: number; rule_count: number }> {
-    const { organizationId, userId, categoryMapping, applyToFuture, dateRange } = params;
+    const { organization_id, userId, categoryMapping, applyToFuture, dateRange } = params;
 
     let updatedCount = 0;
     let ruleCount = 0;
@@ -940,7 +941,7 @@ export class TransactionCategorizationService {
 
         if (oldCategory && newCategory) {
           await knex('rules').insert({
-            organization_id: organizationId,
+            organization_id: organization_id,
             name: `Auto-migrate ${oldCategory.name} to ${newCategory.name}`,
             description: `Automatically recategorize transactions from ${oldCategory.name} to ${newCategory.name}`,
             rule_type: 'categorization',
@@ -964,7 +965,7 @@ export class TransactionCategorizationService {
   }
 
   async analyzeMerchantCategorization(params: {
-    organizationId: string;
+    organization_id: string;
     merchantName?: string;
     includeSuggestions?: boolean;
   }): Promise<{
@@ -981,7 +982,7 @@ export class TransactionCategorizationService {
       suggested_category?: string;
     }>;
   }> {
-    const { organizationId, merchantName, includeSuggestions } = params;
+    const { organization_id, merchantName, includeSuggestions } = params;
 
     let query = knex.raw(`
       SELECT 
@@ -1020,7 +1021,7 @@ export class TransactionCategorizationService {
       GROUP BY COALESCE(mi.normalized_name, t.merchant_name, 'Unknown')
       HAVING COUNT(t.id) >= 2
       ORDER BY transaction_count DESC
-    `, merchantName ? [organizationId, organizationId, `%${merchantName}%`] : [organizationId, organizationId]);
+    `, merchantName ? [organization_id, organization_id, `%${merchantName}%`] : [organization_id, organizationId]);
 
     const result = await query;
 
