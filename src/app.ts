@@ -73,6 +73,21 @@ class ExpenseApp {
   }
 
   private initializeRoutes(): void {
+    // Root route
+    this.app.get('/', (_, res) => {
+      res.json({
+        name: 'Expense Platform API',
+        version: '1.0.0',
+        description: 'Enterprise expense management platform - Airbase alternative',
+        endpoints: {
+          api: '/api',
+          health: '/health',
+          docs: '/api/docs'
+        },
+        status: 'online'
+      });
+    });
+
     // Health check endpoint (before routes)
     this.app.get('/health', (_, res) => {
       res.status(200).json({
