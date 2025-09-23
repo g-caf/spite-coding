@@ -4,9 +4,9 @@
   "description": "Enterprise-grade expense management platform - Airbase replacement",
   "main": "dist/src/server.js",
   "scripts": {
-    "start": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/server.ts",
+    "start": "node dist/src/server.js",
     "dev": "nodemon",
-    "build": "echo 'Skipping tsc build (transpile at runtime)'",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
@@ -17,9 +17,9 @@
     "integration-test": "node start-integration-test.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "migrate": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/migrate.ts",
-    "seed": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/seed.ts",
-    "health-check": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/health-check.ts",
+    "migrate": "node dist/src/scripts/migrate.js",
+    "seed": "node dist/src/scripts/seed.js",
+    "health-check": "node dist/src/scripts/health-check.js",
     "plaid:sync": "node dist/src/scripts/sync-plaid.js",
     "plaid:cleanup": "node dist/src/scripts/cleanup-plaid.js"
   },
@@ -70,9 +70,7 @@
     "ts-jest": "^29.1.1",
     "typescript": "^5.9.2",
     "uuid": "^9.0.1",
-    "winston": "^3.9.0",
-    "ts-node": "^10.9.1",
-    "tsconfig-paths": "^4.2.0"
+    "winston": "^3.9.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
