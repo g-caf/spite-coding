@@ -4,9 +4,10 @@
   "description": "Enterprise-grade expense management platform - Airbase replacement",
   "main": "dist/src/server.js",
   "scripts": {
-    "start": "node dist/src/server.js",
+    "start": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/server.ts",
     "dev": "nodemon",
-    "build": "tsc",
+    "build": "echo 'Skipping tsc build (transpile at runtime)'",
+    "typecheck": "tsc --noEmit",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
     "lint": "eslint src/**/*.ts",
@@ -16,9 +17,9 @@
     "integration-test": "node start-integration-test.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "migrate": "node dist/src/scripts/migrate.js",
-    "seed": "node dist/src/scripts/seed.js",
-    "health-check": "node dist/src/scripts/health-check.js",
+    "migrate": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/migrate.ts",
+    "seed": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/seed.ts",
+    "health-check": "node -r ts-node/register/transpile-only -r tsconfig-paths/register src/scripts/health-check.ts",
     "plaid:sync": "node dist/src/scripts/sync-plaid.js",
     "plaid:cleanup": "node dist/src/scripts/cleanup-plaid.js"
   },
@@ -99,7 +100,9 @@
     "nodemon": "^2.0.22",
     "prettier": "^2.8.8",
     "rimraf": "^6.0.1",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.5"
   },
   "engines": {
     "node": ">=20.10.0",
