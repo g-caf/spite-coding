@@ -14,6 +14,12 @@ RUN npm ci
 COPY src/ ./src/
 COPY config/ ./config/
 
+# Copy runtime assets that production stage will need
+COPY database/ ./database/
+COPY views/ ./views/
+COPY public/ ./public/
+COPY knexfile.js ./
+
 # Build the application (but don't fail on TS errors - just emit JS)
 RUN npm run build || echo "Build completed with warnings"
 
