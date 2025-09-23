@@ -1,93 +1,147 @@
 <% transactions.forEach(transaction => { %>
-<div class="transaction-row border-b border-gray-200 hover:bg-gray-50 cursor-pointer" 
-     data-transaction-id="<%= transaction.id %>"
-     hx-get="/inbox/transaction/<%= transaction.id %>"
-     hx-target="#transaction-details-content"
-     hx-swap="innerHTML">
+<article class="transaction-card" 
+         data-transaction-id="<%= transaction.id %>"
+         hx-get="/inbox/transaction/<%= transaction.id %>"
+         hx-target="#transaction-details-content"
+         hx-swap="innerHTML"
+         onclick="showTransactionDetails('<%= transaction.id %>')">
     
-    <div class="px-6 py-4 flex items-center space-x-4">
+    <div class="transaction-card-content">
         <!-- Checkbox -->
         <input type="checkbox" 
-               class="transaction-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-               data-transaction-id="<%= transaction.id %>">
+               class="transaction-card-checkbox transaction-checkbox"
+               data-transaction-id="<%= transaction.id %>"
+               onclick="event.stopPropagation();">
         
-        <!-- Transaction Info -->
-        <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between mb-1">
-                <h3 class="text-sm font-medium text-gray-900 truncate">
+        <!-- Main Transaction Info -->
+        <div class="transaction-card-main">
+            <div class="transaction-card-header">
+                <h3 class="transaction-card-description">
                     <%= transaction.description %>
                 </h3>
-                <span class="text-sm font-semibold text-gray-900">
+                <div class="transaction-card-amount">
                     <%= transaction.formattedAmount %>
-                </span>
+                </div>
             </div>
             
-            <div class="flex items-center space-x-4 text-xs text-gray-500">
-                <span class="flex items-center">
-                    <i class="fas fa-calendar mr-1"></i>
-                    <%= transaction.formattedDate %>
-                </span>
+            <div class="transaction-card-meta">
+                <div class="transaction-card-meta-item">
+                    <i class="fas fa-calendar transaction-card-meta-icon"></i>
+                    <span><%= transaction.formattedDate %></span>
+                </div>
                 <% if (transaction.merchant) { %>
-                <span class="flex items-center">
-                    <i class="fas fa-store mr-1"></i>
-                    <%= transaction.merchant %>
-                </span>
+                <div class="transaction-card-meta-item">
+                    <i class="fas fa-store transaction-card-meta-icon"></i>
+                    <span><%= transaction.merchant %></span>
+                </div>
                 <% } %>
                 <% if (transaction.payment_method) { %>
-                <span class="flex items-center">
-                    <i class="fas fa-credit-card mr-1"></i>
-                    <%= transaction.payment_method %>
-                </span>
+                <div class="transaction-card-meta-item">
+                    <i class="fas fa-credit-card transaction-card-meta-icon"></i>
+                    <span><%= transaction.payment_method %></span>
+                </div>
                 <% } %>
             </div>
         </div>
         
-        <!-- Status and Category -->
-        <div class="flex items-center space-x-3">
+        <!-- Sidebar: Status, Category, Actions -->
+        <div class="transaction-card-sidebar">
             <!-- Category -->
             <% if (transaction.category_id) { %>
                 <% const category = categories.find(c => c.id === transaction.category_id); %>
                 <% if (category) { %>
-                <div class="flex items-center px-2 py-1 bg-gray-100 rounded-full">
-                    <span class="text-sm mr-1"><%= category.icon %></span>
-                    <span class="text-xs font-medium text-gray-700"><%= category.name %></span>
+                <div class="category-pill">
+                    <span class="category-pill-icon"><%= category.icon %></span>
+                    <span><%= category.name %></span>
                 </div>
                 <% } %>
             <% } %>
             
             <!-- Status -->
-            <span class="px-2 py-1 text-xs font-medium rounded-full border status-<%= transaction.status %>">
+            <div class="status-badge <%= transaction.status %>">
                 <%= transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1) %>
-            </span>
+            </div>
             
             <!-- Receipt Indicator -->
-            <% if (transaction.receipt_url) { %>
-            <i class="fas fa-paperclip text-green-500" title="Has receipt"></i>
-            <% } else { %>
-            <i class="fas fa-paperclip text-gray-300" title="No receipt"></i>
-            <% } %>
+            <i class="fas fa-paperclip receipt-indicator <%= transaction.receipt_url ? 'has-receipt' : '' %>" 
+               title="<%= transaction.receipt_url ? 'Has receipt' : 'No receipt' %>"></i>
             
-            <!-- Actions -->
-            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onclick="openReceiptModal('<%= transaction.id %>')" 
-                        class="p-1 text-gray-400 hover:text-blue-600" 
+            <!-- Inline Actions -->
+            <div class="transaction-actions">
+                <button onclick="event.stopPropagation(); openReceiptModal('<%= transaction.id %>')" 
+                        class="transaction-action" 
                         title="Upload receipt">
                     <i class="fas fa-upload"></i>
                 </button>
-                <button class="p-1 text-gray-400 hover:text-green-600" 
+                
+                <button onclick="event.stopPropagation(); quickCategorize('<%= transaction.id %>')" 
+                        class="transaction-action" 
                         title="Quick categorize">
                     <i class="fas fa-tag"></i>
                 </button>
+                
+                <% if (transaction.status === 'categorized') { %>
+                <button onclick="event.stopPropagation(); quickApprove('<%= transaction.id %>')" 
+                        class="transaction-action" 
+                        title="Quick approve"
+                        style="color: var(--color-green);">
+                    <i class="fas fa-check"></i>
+                </button>
+                <% } %>
             </div>
         </div>
     </div>
-</div>
+</article>
 <% }); %>
 
 <% if (transactions.length === 0) { %>
-<div class="text-center py-12">
-    <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
-    <h3 class="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
-    <p class="text-gray-500">Try adjusting your search or filters</p>
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; text-align: center;">
+    <i class="fas fa-inbox" style="font-size: 4rem; color: var(--color-gray-300); margin-bottom: 1.5rem;"></i>
+    <h3 style="font-size: var(--text-lg); font-weight: var(--font-medium); color: var(--color-gray-900); margin-bottom: 0.5rem;">
+        No transactions found
+    </h3>
+    <p style="color: var(--color-gray-500); font-size: var(--text-sm);">
+        Try adjusting your search or filters to see more results
+    </p>
 </div>
 <% } %>
+
+<script>
+function showTransactionDetails(transactionId) {
+    // Show the details panel with smooth animation
+    const detailsPanel = document.getElementById('transaction-details');
+    detailsPanel.classList.remove('hidden');
+    detailsPanel.classList.add('animate-slide-in-right');
+    
+    // Mark this transaction as selected
+    document.querySelectorAll('.transaction-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    document.querySelector(`[data-transaction-id="${transactionId}"]`).classList.add('selected');
+}
+
+function quickCategorize(transactionId) {
+    // Create a simple category selection dropdown
+    const categories = <%- JSON.stringify(categories) %>;
+    const options = categories.map(cat => 
+        `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`
+    ).join('');
+    
+    const categoryId = prompt('Choose category:\n' + categories.map((cat, i) => `${i+1}. ${cat.icon} ${cat.name}`).join('\n'));
+    
+    if (categoryId) {
+        htmx.ajax('POST', `/inbox/transaction/${transactionId}/category`, {
+            values: { categoryId: categories[parseInt(categoryId)-1]?.id },
+            target: `[data-transaction-id="${transactionId}"]`,
+            swap: 'outerHTML'
+        });
+    }
+}
+
+function quickApprove(transactionId) {
+    htmx.ajax('POST', `/inbox/transaction/${transactionId}/approve`, {
+        target: `[data-transaction-id="${transactionId}"]`,
+        swap: 'outerHTML'
+    });
+}
+</script>

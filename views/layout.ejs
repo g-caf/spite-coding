@@ -4,94 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %> | Expense Platform</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX for dynamic interactions -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/inbox.css">
+    
+    <!-- Our beautiful wireframe CSS -->
+    <link rel="stylesheet" href="/css/wireframe.css">
+    
+    <!-- HTMX Indicator Styles -->
     <style>
-        .htmx-indicator { opacity: 0; }
-        .htmx-request .htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }
-        .htmx-request.htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }
-        
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Status chips */
-        .status-unmatched { @apply bg-red-100 text-red-800 border-red-200; }
-        .status-categorized { @apply bg-yellow-100 text-yellow-800 border-yellow-200; }
-        .status-approved { @apply bg-green-100 text-green-800 border-green-200; }
-        .status-rejected { @apply bg-gray-100 text-gray-800 border-gray-200; }
-        .status-exported { @apply bg-blue-100 text-blue-800 border-blue-200; }
-
-        /* Keyboard shortcuts */
-        .kbd {
-            @apply inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs font-mono rounded border;
+        .htmx-indicator { 
+            opacity: 0; 
+            transition: opacity 200ms ease-in-out;
+        }
+        .htmx-request .htmx-indicator,
+        .htmx-request.htmx-indicator { 
+            opacity: 1; 
         }
     </style>
 </head>
-<body class="bg-gray-50 h-screen overflow-hidden">
-    <!-- Top Navigation Bar -->
-    <nav class="bg-white border-b border-gray-200 px-6 py-4">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-semibold text-gray-900">Expense Platform</h1>
-                <div class="flex space-x-1 bg-gray-100 rounded-lg p-1">
-                    <a href="/inbox" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md">
-                        <i class="fas fa-inbox mr-2"></i>Inbox
-                    </a>
-                    <a href="/reports" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-chart-bar mr-2"></i>Reports
-                    </a>
-                    <a href="/settings" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-cog mr-2"></i>Settings
-                    </a>
-                </div>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <!-- Brand -->
+            <div class="header-brand">
+                <div class="header-logo">E</div>
+                <h1 class="header-title">Expense Platform</h1>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="relative">
-                    <div class="htmx-indicator absolute inset-0 flex items-center justify-center">
-                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+
+            <!-- Navigation -->
+            <nav class="header-nav">
+                <a href="/inbox" class="header-nav-item <%= title === 'Inbox' ? 'active' : '' %>">
+                    <i class="fas fa-inbox" style="margin-right: 0.5rem;"></i>
+                    Inbox
+                </a>
+                <a href="/reports" class="header-nav-item <%= title === 'Reports' ? 'active' : '' %>">
+                    <i class="fas fa-chart-bar" style="margin-right: 0.5rem;"></i>
+                    Reports
+                </a>
+                <a href="/settings" class="header-nav-item <%= title === 'Settings' ? 'active' : '' %>">
+                    <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>
+                    Settings
+                </a>
+            </nav>
+
+            <!-- Header Actions -->
+            <div class="header-actions">
+                <!-- Global Search -->
+                <div class="header-search">
+                    <input type="text" 
+                           class="header-search-input" 
+                           placeholder="Search transactions..." 
+                           id="global-search">
+                    <i class="fas fa-search header-search-icon"></i>
+                </div>
+
+                <!-- Sync Indicator -->
+                <button class="btn-icon" title="Sync status">
+                    <div class="htmx-indicator">
+                        <i class="fas fa-spinner fa-spin"></i>
                     </div>
-                    <i class="fas fa-sync-alt text-gray-400 cursor-pointer hover:text-gray-600"></i>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <img class="h-8 w-8 rounded-full" src="https://ui-avatars.com/api/?name=User&background=3B82F6&color=fff" alt="User">
-                    <span class="text-sm font-medium text-gray-700">User</span>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="flex h-[calc(100vh-72px)]">
-        <%- body %>
-    </div>
-
-    <!-- Global Keyboard Shortcuts -->
-    <div class="hidden" id="keyboard-help">
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between"><span><kbd class="kbd">J</kbd> / <kbd class="kbd">K</kbd></span><span>Navigate transactions</span></div>
-                    <div class="flex justify-between"><span><kbd class="kbd">E</kbd></span><span>Edit selected transaction</span></div>
-                    <div class="flex justify-between"><span><kbd class="kbd">R</kbd></span><span>Upload receipt</span></div>
-                    <div class="flex justify-between"><span><kbd class="kbd">/</kbd></span><span>Search transactions</span></div>
-                    <div class="flex justify-between"><span><kbd class="kbd">Escape</kbd></span><span>Close panels/modals</span></div>
-                    <div class="flex justify-between"><span><kbd class="kbd">?</kbd></span><span>Show this help</span></div>
-                </div>
-                <button onclick="document.getElementById('keyboard-help').classList.add('hidden')" 
-                        class="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Close
+                    <i class="fas fa-sync-alt"></i>
                 </button>
+
+                <!-- User Menu -->
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff&size=32" 
+                         alt="User avatar" 
+                         style="width: 2rem; height: 2rem; border-radius: 50%;">
+                    <span style="font-size: 0.875rem; font-weight: 500; color: var(--color-gray-700);">User</span>
+                </div>
             </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <%- body %>
+        </main>
+    </div>
+
+    <!-- Global Keyboard Shortcuts Help Modal -->
+    <div id="keyboard-help" class="hidden" style="position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 100;">
+        <div style="background: white; border-radius: 0.75rem; padding: 2rem; max-width: 28rem; width: 100%; margin: 1rem; box-shadow: var(--shadow-lg);">
+            <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--color-gray-900);">Keyboard Shortcuts</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.875rem; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="kbd">J</span> / <span class="kbd">K</span>
+                    </div>
+                    <span style="color: var(--color-gray-600);">Navigate transactions</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="kbd">E</span>
+                    <span style="color: var(--color-gray-600);">Edit selected transaction</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="kbd">R</span>
+                    <span style="color: var(--color-gray-600);">Upload receipt</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="kbd">/</span>
+                    <span style="color: var(--color-gray-600);">Search transactions</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="kbd">Escape</span>
+                    <span style="color: var(--color-gray-600);">Close panels/modals</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="kbd">?</span>
+                    <span style="color: var(--color-gray-600);">Show this help</span>
+                </div>
+            </div>
+            
+            <button onclick="document.getElementById('keyboard-help').classList.add('hidden')" 
+                    class="btn btn-primary" 
+                    style="width: 100%;">
+                Close
+            </button>
         </div>
     </div>
 
+    <!-- Include inbox-specific JavaScript -->
     <script src="/js/inbox.js"></script>
+    
+    <!-- Global JavaScript -->
     <script>
         // Global keyboard shortcuts
         document.addEventListener('keydown', function(e) {
@@ -105,7 +146,8 @@
                     break;
                 case '/':
                     e.preventDefault();
-                    document.getElementById('search-input')?.focus();
+                    const searchInput = document.getElementById('search-input') || document.getElementById('global-search');
+                    searchInput?.focus();
                     break;
                 case 'Escape':
                     document.getElementById('keyboard-help').classList.add('hidden');
@@ -114,9 +156,20 @@
             }
         });
 
-        // HTMX configuration
+        // HTMX configuration for smooth interactions
         htmx.config.globalViewTransitions = true;
         htmx.config.useTemplateFragments = true;
+        
+        // Add loading states to buttons
+        htmx.on('htmx:beforeRequest', function(evt) {
+            const btn = evt.target.closest('button');
+            if (btn) btn.classList.add('loading');
+        });
+        
+        htmx.on('htmx:afterRequest', function(evt) {
+            const btn = evt.target.closest('button');
+            if (btn) btn.classList.remove('loading');
+        });
     </script>
 </body>
 </html>

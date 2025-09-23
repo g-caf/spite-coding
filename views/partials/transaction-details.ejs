@@ -1,73 +1,66 @@
-<!-- Header -->
-<div class="px-6 py-4 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-2">
-        <h2 class="text-lg font-semibold text-gray-900">Transaction Details</h2>
-        <button onclick="document.getElementById('transaction-details').classList.add('hidden')" 
-                class="text-gray-400 hover:text-gray-600">
+<!-- Details Header -->
+<header class="details-header">
+    <div class="details-header-top">
+        <h2 class="details-title">Transaction Details</h2>
+        <button onclick="hideTransactionDetails()" class="details-close">
             <i class="fas fa-times"></i>
         </button>
     </div>
-    <div class="flex items-center space-x-2">
-        <span class="px-2 py-1 text-xs font-medium rounded-full border status-<%= transaction.status %>">
+    <div class="details-badges">
+        <div class="status-badge <%= transaction.status %>">
             <%= transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1) %>
-        </span>
+        </div>
         <% if (transaction.category_id) { %>
             <% const category = categories.find(c => c.id === transaction.category_id); %>
             <% if (category) { %>
-            <div class="flex items-center px-2 py-1 bg-gray-100 rounded-full">
-                <span class="text-sm mr-1"><%= category.icon %></span>
-                <span class="text-xs font-medium text-gray-700"><%= category.name %></span>
+            <div class="category-pill">
+                <span class="category-pill-icon"><%= category.icon %></span>
+                <span><%= category.name %></span>
             </div>
             <% } %>
         <% } %>
     </div>
-</div>
+</header>
 
-<!-- Transaction Info -->
-<div class="px-6 py-4 border-b border-gray-200">
-    <div class="space-y-3">
-        <div class="flex justify-between items-start">
-            <div class="flex-1 min-w-0">
-                <h3 class="text-base font-medium text-gray-900 mb-1">
-                    <%= transaction.description %>
-                </h3>
-                <div class="space-y-1 text-sm text-gray-600">
-                    <div class="flex items-center">
-                        <i class="fas fa-calendar w-4 mr-2"></i>
-                        <%= transaction.formattedDate %>
+<div class="details-content">
+    <!-- Transaction Info Section -->
+    <section class="details-section">
+        <div class="transaction-info">
+            <div class="transaction-info-main">
+                <h3><%= transaction.description %></h3>
+                <div class="transaction-info-details">
+                    <div class="transaction-info-item">
+                        <i class="fas fa-calendar transaction-info-icon"></i>
+                        <span><%= transaction.formattedDate %></span>
                     </div>
                     <% if (transaction.merchant) { %>
-                    <div class="flex items-center">
-                        <i class="fas fa-store w-4 mr-2"></i>
-                        <%= transaction.merchant %>
+                    <div class="transaction-info-item">
+                        <i class="fas fa-store transaction-info-icon"></i>
+                        <span><%= transaction.merchant %></span>
                     </div>
                     <% } %>
                     <% if (transaction.payment_method) { %>
-                    <div class="flex items-center">
-                        <i class="fas fa-credit-card w-4 mr-2"></i>
-                        <%= transaction.payment_method %>
+                    <div class="transaction-info-item">
+                        <i class="fas fa-credit-card transaction-info-icon"></i>
+                        <span><%= transaction.payment_method %></span>
                     </div>
                     <% } %>
                 </div>
             </div>
-            <div class="text-right">
-                <div class="text-2xl font-bold text-gray-900">
-                    <%= transaction.formattedAmount %>
-                </div>
+            <div class="transaction-info-amount">
+                <%= transaction.formattedAmount %>
             </div>
         </div>
-    </div>
-</div>
+    </section>
 
-<!-- Category Assignment -->
-<div class="px-6 py-4 border-b border-gray-200">
-    <h4 class="text-sm font-medium text-gray-900 mb-3">Category</h4>
-    <form hx-post="/inbox/transaction/<%= transaction.id %>/category"
-          hx-target="[data-transaction-id='<%= transaction.id %>']"
-          hx-swap="outerHTML">
-        <div class="space-y-2">
+    <!-- Category Assignment -->
+    <section class="details-section">
+        <h4 class="details-section-title">Category</h4>
+        <form hx-post="/inbox/transaction/<%= transaction.id %>/category"
+              hx-target="[data-transaction-id='<%= transaction.id %>']"
+              hx-swap="outerHTML">
             <select name="categoryId" 
-                    class="w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    class="form-select"
                     onchange="this.form.requestSubmit()">
                 <option value="">Select a category...</option>
                 <% categories.forEach(category => { %>
@@ -77,137 +70,181 @@
                 </option>
                 <% }); %>
             </select>
+        </form>
+        
+        <!-- Quick Category Buttons -->
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4);">
+            <% categories.slice(0, 6).forEach(category => { %>
+            <button hx-post="/inbox/transaction/<%= transaction.id %>/category"
+                    hx-vals='{"categoryId": "<%= category.id %>"}'
+                    hx-target="[data-transaction-id='<%= transaction.id %>']"
+                    hx-swap="outerHTML"
+                    class="category-pill <%= transaction.category_id === category.id ? 'selected' : '' %>" 
+                    style="cursor: pointer; border: var(--border-width) solid var(--border-color); <%= transaction.category_id === category.id ? 'background-color: var(--color-accent); color: var(--color-white); border-color: var(--color-accent);' : '' %>">
+                <span class="category-pill-icon"><%= category.icon %></span>
+                <span><%= category.name %></span>
+            </button>
+            <% }); %>
         </div>
-    </form>
-    
-    <!-- Quick Category Buttons -->
-    <div class="mt-3 flex flex-wrap gap-2">
-        <% categories.slice(0, 4).forEach(category => { %>
-        <button hx-post="/inbox/transaction/<%= transaction.id %>/category"
-                hx-vals='{"categoryId": "<%= category.id %>"}'
-                hx-target="[data-transaction-id='<%= transaction.id %>']"
-                hx-swap="outerHTML"
-                class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border border-gray-300 hover:bg-gray-50 <%= transaction.category_id === category.id ? 'bg-blue-50 border-blue-300 text-blue-700' : 'text-gray-700' %>">
-            <span class="mr-1"><%= category.icon %></span>
-            <%= category.name %>
-        </button>
-        <% }); %>
-    </div>
-</div>
+    </section>
 
-<!-- Receipt Section -->
-<div class="px-6 py-4 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-3">
-        <h4 class="text-sm font-medium text-gray-900">Receipt</h4>
-        <button onclick="openReceiptModal('<%= transaction.id %>')" 
-                class="text-sm text-blue-600 hover:text-blue-800">
-            <i class="fas fa-upload mr-1"></i>Upload
-        </button>
-    </div>
-    
-    <% if (transaction.receipt_url) { %>
-    <div class="bg-gray-50 rounded-lg p-4">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center">
-                <% if (transaction.receipt_url.endsWith('.pdf')) { %>
-                <i class="fas fa-file-pdf text-red-500 text-xl mr-3"></i>
-                <% } else { %>
-                <i class="fas fa-image text-blue-500 text-xl mr-3"></i>
-                <% } %>
-                <div>
-                    <p class="text-sm font-medium text-gray-900">Receipt uploaded</p>
-                    <p class="text-xs text-gray-500">Click to view full size</p>
-                </div>
-            </div>
-            <div class="flex space-x-2">
-                <button onclick="window.open('<%= transaction.receipt_url %>', '_blank')" 
-                        class="p-2 text-gray-400 hover:text-gray-600" title="View">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="p-2 text-gray-400 hover:text-red-600" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+    <!-- Receipt Section -->
+    <section class="details-section">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
+            <h4 class="details-section-title" style="margin-bottom: 0;">Receipt</h4>
+            <button onclick="openReceiptModal('<%= transaction.id %>')" class="btn btn-secondary">
+                <i class="fas fa-upload"></i>
+                Upload
+            </button>
         </div>
         
-        <!-- Image Preview -->
-        <% if (!transaction.receipt_url.endsWith('.pdf')) { %>
-        <div class="mt-3">
-            <img src="<%= transaction.receipt_url %>" 
-                 alt="Receipt" 
-                 class="w-full h-32 object-cover rounded cursor-pointer"
-                 onclick="window.open('<%= transaction.receipt_url %>', '_blank')">
+        <% if (transaction.receipt_url) { %>
+        <div style="background-color: var(--color-gray-50); border-radius: var(--border-radius-lg); padding: var(--space-6);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3);">
+                <div style="display: flex; align-items: center; gap: var(--space-3);">
+                    <% if (transaction.receipt_url.endsWith('.pdf')) { %>
+                    <i class="fas fa-file-pdf" style="font-size: 1.5rem; color: var(--color-red);"></i>
+                    <% } else { %>
+                    <i class="fas fa-image" style="font-size: 1.5rem; color: var(--color-accent);"></i>
+                    <% } %>
+                    <div>
+                        <p style="font-size: var(--text-sm); font-weight: var(--font-medium); color: var(--color-gray-900); margin-bottom: 0.25rem;">Receipt uploaded</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-gray-500);">Click to view full size</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: var(--space-1);">
+                    <button onclick="window.open('<%= transaction.receipt_url %>', '_blank')" 
+                            class="btn-icon" 
+                            title="View receipt">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-icon" 
+                            title="Delete receipt"
+                            style="color: var(--color-red);">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Image Preview -->
+            <% if (!transaction.receipt_url.endsWith('.pdf')) { %>
+            <div style="margin-top: var(--space-3);">
+                <img src="<%= transaction.receipt_url %>" 
+                     alt="Receipt preview" 
+                     style="width: 100%; height: 8rem; object-fit: cover; border-radius: var(--border-radius); cursor: pointer;"
+                     onclick="window.open('<%= transaction.receipt_url %>', '_blank')">
+            </div>
+            <% } %>
         </div>
-        <% } %>
-    </div>
-    <% } else { %>
-    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-        <i class="fas fa-receipt text-gray-300 text-2xl mb-2"></i>
-        <p class="text-sm text-gray-500 mb-3">No receipt uploaded</p>
-        <button onclick="openReceiptModal('<%= transaction.id %>')" 
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50">
-            <i class="fas fa-upload mr-2"></i>Upload Receipt
-        </button>
-    </div>
-    <% } %>
-</div>
-
-<!-- Notes Section -->
-<div class="px-6 py-4 border-b border-gray-200">
-    <h4 class="text-sm font-medium text-gray-900 mb-3">Notes</h4>
-    <form hx-post="/inbox/transaction/<%= transaction.id %>/notes"
-          hx-trigger="blur changed"
-          hx-target="this">
-        <textarea name="notes" 
-                  rows="3" 
-                  placeholder="Add notes about this transaction..."
-                  class="w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"><%= transaction.notes || '' %></textarea>
-    </form>
-</div>
-
-<!-- Action Buttons -->
-<div class="px-6 py-4">
-    <div class="flex space-x-3">
-        <% if (transaction.status === 'categorized') { %>
-        <button hx-post="/inbox/transaction/<%= transaction.id %>/approve"
-                hx-target="[data-transaction-id='<%= transaction.id %>']"
-                hx-swap="outerHTML"
-                class="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
-            <i class="fas fa-check mr-2"></i>Approve
-        </button>
-        <button hx-post="/inbox/transaction/<%= transaction.id %>/reject"
-                hx-target="[data-transaction-id='<%= transaction.id %>']"
-                hx-swap="outerHTML"
-                class="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">
-            <i class="fas fa-times mr-2"></i>Reject
-        </button>
-        <% } else if (transaction.status === 'unmatched') { %>
-        <button disabled 
-                class="flex-1 px-4 py-2 bg-gray-300 text-gray-500 text-sm font-medium rounded-md cursor-not-allowed">
-            <i class="fas fa-exclamation-triangle mr-2"></i>Needs Category
-        </button>
         <% } else { %>
-        <button class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-            <i class="fas fa-edit mr-2"></i>Edit Transaction
-        </button>
-        <% } %>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="mt-4 pt-4 border-t border-gray-200">
-        <div class="flex justify-between text-xs text-gray-500">
-            <div class="flex space-x-4">
-                <span>ID: <%= transaction.id %></span>
-                <span>Created: <%= transaction.created_at.toLocaleDateString() %></span>
-            </div>
-            <div class="flex space-x-2">
-                <button class="hover:text-gray-700" title="Duplicate">
-                    <i class="fas fa-copy"></i>
-                </button>
-                <button class="hover:text-red-600" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
+        <div style="border: 2px dashed var(--border-color); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer;"
+             onclick="openReceiptModal('<%= transaction.id %>')"
+             onmouseover="this.style.borderColor = 'var(--color-accent)'; this.style.backgroundColor = 'var(--color-gray-50)'"
+             onmouseout="this.style.borderColor = 'var(--border-color)'; this.style.backgroundColor = 'transparent'">
+            <i class="fas fa-receipt" style="font-size: 2rem; color: var(--color-gray-300); margin-bottom: var(--space-3); display: block;"></i>
+            <p style="font-size: var(--text-sm); color: var(--color-gray-500); margin-bottom: var(--space-3);">No receipt uploaded</p>
+            <div class="btn btn-secondary">
+                <i class="fas fa-upload"></i>
+                Upload Receipt
             </div>
         </div>
-    </div>
+        <% } %>
+    </section>
+
+    <!-- Notes Section -->
+    <section class="details-section">
+        <h4 class="details-section-title">Notes</h4>
+        <form hx-post="/inbox/transaction/<%= transaction.id %>/notes"
+              hx-trigger="blur changed"
+              hx-target="this">
+            <textarea name="notes" 
+                      rows="4" 
+                      placeholder="Add notes about this transaction..."
+                      class="form-input"
+                      style="resize: vertical; min-height: 6rem;"><%= transaction.notes || '' %></textarea>
+        </form>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="details-section">
+        <div style="display: flex; gap: var(--space-3); margin-bottom: var(--space-6);">
+            <% if (transaction.status === 'categorized') { %>
+            <button hx-post="/inbox/transaction/<%= transaction.id %>/approve"
+                    hx-target="[data-transaction-id='<%= transaction.id %>']"
+                    hx-swap="outerHTML"
+                    class="btn btn-primary" 
+                    style="flex: 1; background-color: var(--color-green); border-color: var(--color-green);">
+                <i class="fas fa-check"></i>
+                Approve
+            </button>
+            <button hx-post="/inbox/transaction/<%= transaction.id %>/reject"
+                    hx-target="[data-transaction-id='<%= transaction.id %>']"
+                    hx-swap="outerHTML"
+                    class="btn btn-secondary" 
+                    style="flex: 1; color: var(--color-red); border-color: var(--color-red);">
+                <i class="fas fa-times"></i>
+                Reject
+            </button>
+            <% } else if (transaction.status === 'unmatched') { %>
+            <button disabled 
+                    class="btn btn-secondary" 
+                    style="flex: 1; opacity: 0.5; cursor: not-allowed;">
+                <i class="fas fa-exclamation-triangle"></i>
+                Needs Category
+            </button>
+            <% } else { %>
+            <button class="btn btn-primary" style="flex: 1;">
+                <i class="fas fa-edit"></i>
+                Edit Transaction
+            </button>
+            <% } %>
+        </div>
+        
+        <!-- Quick Actions & Metadata -->
+        <div style="padding-top: var(--space-4); border-top: var(--border-width) solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: var(--space-4); font-size: var(--text-xs); color: var(--color-gray-500);">
+                    <span>ID: <%= transaction.id %></span>
+                    <span>Created: <%= transaction.created_at.toLocaleDateString() %></span>
+                </div>
+                <div style="display: flex; gap: var(--space-2);">
+                    <button class="btn-icon" title="Duplicate transaction">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon" title="Delete transaction" style="color: var(--color-red);">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
+
+<script>
+function hideTransactionDetails() {
+    const detailsPanel = document.getElementById('transaction-details');
+    detailsPanel.classList.add('hidden');
+    
+    // Remove selection from all cards
+    document.querySelectorAll('.transaction-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+}
+
+// Close details panel when clicking outside
+document.addEventListener('click', function(e) {
+    const detailsPanel = document.getElementById('transaction-details');
+    if (!detailsPanel.classList.contains('hidden') && 
+        !detailsPanel.contains(e.target) && 
+        !e.target.closest('.transaction-card')) {
+        hideTransactionDetails();
+    }
+});
+
+// Escape key to close
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideTransactionDetails();
+    }
+});
+</script>

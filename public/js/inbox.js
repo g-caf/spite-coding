@@ -1,9 +1,9 @@
-// Inbox functionality and keyboard shortcuts
-class InboxManager {
+// Enhanced Inbox Manager for Wireframe UI
+class WireframeInboxManager {
     constructor() {
         this.selectedTransactions = new Set();
         this.currentTransactionIndex = -1;
-        this.transactionRows = [];
+        this.transactionCards = [];
         this.init();
     }
 
@@ -11,7 +11,7 @@ class InboxManager {
         this.setupEventListeners();
         this.setupDragDrop();
         this.setupKeyboardNavigation();
-        this.updateTransactionRows();
+        this.updateTransactionCards();
     }
 
     setupEventListeners() {
@@ -30,23 +30,38 @@ class InboxManager {
             }
         });
 
-        // Transaction row clicks
-        document.addEventListener('click', (e) => {
-            const row = e.target.closest('.transaction-row');
-            if (row && !e.target.classList.contains('transaction-checkbox')) {
-                this.selectTransaction(row);
-            }
+        // HTMX events for smooth transitions
+        document.addEventListener('htmx:beforeRequest', (e) => {
+            this.showLoadingState(e.target);
         });
 
-        // HTMX events
+        document.addEventListener('htmx:afterRequest', (e) => {
+            this.hideLoadingState(e.target);
+        });
+
         document.addEventListener('htmx:afterSwap', (e) => {
             if (e.target.id === 'transaction-list') {
-                this.updateTransactionRows();
+                this.updateTransactionCards();
+                this.updateBulkActions();
             }
             if (e.target.id === 'transaction-details-content') {
                 this.showTransactionDetails();
             }
         });
+
+        // Close details when clicking outside
+        document.addEventListener('click', (e) => {
+            const detailsPanel = document.getElementById('transaction-details');
+            if (!detailsPanel?.classList.contains('hidden') && 
+                !detailsPanel.contains(e.target) && 
+                !e.target.closest('.transaction-card') &&
+                !e.target.closest('button')) {
+                this.hideTransactionDetails();
+            }
+        });
+
+        // Smooth scroll behavior for better UX
+        document.documentElement.style.scrollBehavior = 'smooth';
     }
 
     setupDragDrop() {
@@ -57,20 +72,26 @@ class InboxManager {
             // Click to select file
             dropZone.addEventListener('click', () => fileInput.click());
 
-            // Drag and drop events
+            // Drag and drop events with enhanced visual feedback
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                dropZone.classList.add('border-blue-400', 'bg-blue-50');
+                dropZone.style.borderColor = 'var(--color-accent)';
+                dropZone.style.backgroundColor = 'var(--color-gray-50)';
+                dropZone.style.transform = 'scale(1.02)';
             });
 
             dropZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+                dropZone.style.borderColor = 'var(--border-color)';
+                dropZone.style.backgroundColor = 'transparent';
+                dropZone.style.transform = 'scale(1)';
             });
 
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+                dropZone.style.borderColor = 'var(--border-color)';
+                dropZone.style.backgroundColor = 'transparent';
+                dropZone.style.transform = 'scale(1)';
                 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
@@ -122,80 +143,147 @@ class InboxManager {
                 case 'r':
                     e.preventDefault();
                     if (this.currentTransactionIndex >= 0) {
-                        const row = this.transactionRows[this.currentTransactionIndex];
-                        const transactionId = row.dataset.transactionId;
+                        const card = this.transactionCards[this.currentTransactionIndex];
+                        const transactionId = card.dataset.transactionId;
                         this.openReceiptModal(transactionId);
                     }
                     break;
                 case 'enter':
                     if (this.currentTransactionIndex >= 0) {
                         e.preventDefault();
-                        const row = this.transactionRows[this.currentTransactionIndex];
-                        row.click();
+                        const card = this.transactionCards[this.currentTransactionIndex];
+                        this.selectTransactionCard(card);
                     }
                     break;
                 case ' ':
                     if (this.currentTransactionIndex >= 0) {
                         e.preventDefault();
-                        const row = this.transactionRows[this.currentTransactionIndex];
-                        const checkbox = row.querySelector('.transaction-checkbox');
+                        const card = this.transactionCards[this.currentTransactionIndex];
+                        const checkbox = card.querySelector('.transaction-checkbox');
                         if (checkbox) {
                             checkbox.checked = !checkbox.checked;
                             checkbox.dispatchEvent(new Event('change'));
                         }
                     }
                     break;
+                case 'c':
+                    if (this.currentTransactionIndex >= 0) {
+                        e.preventDefault();
+                        // Quick categorize shortcut
+                        this.showQuickCategorize();
+                    }
+                    break;
+                case 'a':
+                    if (this.currentTransactionIndex >= 0) {
+                        e.preventDefault();
+                        // Quick approve shortcut
+                        this.quickApprove();
+                    }
+                    break;
             }
         });
     }
 
-    updateTransactionRows() {
-        this.transactionRows = Array.from(document.querySelectorAll('.transaction-row'));
+    updateTransactionCards() {
+        this.transactionCards = Array.from(document.querySelectorAll('.transaction-card'));
         this.updateSelectedCount();
+        
+        // Add enhanced hover effects
+        this.transactionCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.transform = 'translateY(-1px)';
+                    card.style.boxShadow = 'var(--shadow-sm)';
+                }
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.transform = 'translateY(0)';
+                    card.style.boxShadow = 'none';
+                }
+            });
+        });
     }
 
     navigateTransactions(direction) {
-        if (this.transactionRows.length === 0) return;
+        if (this.transactionCards.length === 0) return;
 
-        // Remove current highlight
+        // Remove current selection
         if (this.currentTransactionIndex >= 0) {
-            this.transactionRows[this.currentTransactionIndex].classList.remove('bg-blue-50', 'ring-2', 'ring-blue-500');
+            this.transactionCards[this.currentTransactionIndex].classList.remove('selected');
         }
 
-        // Update index
+        // Update index with wrapping
         this.currentTransactionIndex += direction;
         if (this.currentTransactionIndex < 0) {
-            this.currentTransactionIndex = this.transactionRows.length - 1;
-        } else if (this.currentTransactionIndex >= this.transactionRows.length) {
+            this.currentTransactionIndex = this.transactionCards.length - 1;
+        } else if (this.currentTransactionIndex >= this.transactionCards.length) {
             this.currentTransactionIndex = 0;
         }
 
-        // Highlight new row
-        const currentRow = this.transactionRows[this.currentTransactionIndex];
-        currentRow.classList.add('bg-blue-50', 'ring-2', 'ring-blue-500');
-        currentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Highlight new card with smooth animation
+        const currentCard = this.transactionCards[this.currentTransactionIndex];
+        currentCard.classList.add('selected');
+        currentCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+        });
+        
+        // Load transaction details
+        this.loadTransactionDetails(currentCard.dataset.transactionId);
     }
 
-    selectTransaction(row) {
-        const index = this.transactionRows.indexOf(row);
+    selectTransactionCard(card) {
+        const index = this.transactionCards.indexOf(card);
         if (index >= 0) {
-            // Remove old highlight
-            if (this.currentTransactionIndex >= 0) {
-                this.transactionRows[this.currentTransactionIndex].classList.remove('bg-blue-50', 'ring-2', 'ring-blue-500');
-            }
+            // Remove old selection
+            this.transactionCards.forEach(c => c.classList.remove('selected'));
             
             // Set new selection
             this.currentTransactionIndex = index;
-            row.classList.add('bg-blue-50', 'ring-2', 'ring-blue-500');
+            card.classList.add('selected');
+            
+            // Load details
+            this.loadTransactionDetails(card.dataset.transactionId);
         }
     }
 
-    editCurrentTransaction() {
-        if (this.currentTransactionIndex >= 0) {
-            const row = this.transactionRows[this.currentTransactionIndex];
-            const transactionId = row.dataset.transactionId;
-            // Trigger HTMX request to load transaction details
-            htmx.ajax('GET', `/inbox/transaction/${transactionId}`, '#transaction-details-content');
+    loadTransactionDetails(transactionId) {
+        // Trigger HTMX request to load transaction details
+        htmx.ajax('GET', `/inbox/transaction/${transactionId}`, {
+            target: '#transaction-details-content',
+            swap: 'innerHTML'
+        });
+    }
+
+    showTransactionDetails() {
+        const detailsPanel = document.getElementById('transaction-details');
+        if (detailsPanel) {
+            detailsPanel.classList.remove('hidden');
+            detailsPanel.classList.add('animate-slide-in-right');
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                detailsPanel.classList.remove('animate-slide-in-right');
+            }, 300);
+        }
+    }
+
+    hideTransactionDetails() {
+        const detailsPanel = document.getElementById('transaction-details');
+        if (detailsPanel && !detailsPanel.classList.contains('hidden')) {
+            detailsPanel.classList.add('animate-slide-out-right');
+            
+            setTimeout(() => {
+                detailsPanel.classList.add('hidden');
+                detailsPanel.classList.remove('animate-slide-out-right');
+            }, 300);
+            
+            // Remove selection from all cards
+            this.transactionCards.forEach(card => card.classList.remove('selected'));
+            this.currentTransactionIndex = -1;
         }
     }
 
@@ -215,17 +303,21 @@ class InboxManager {
         }
         this.updateSelectedCount();
         this.updateSelectAllState();
+        this.updateBulkActions();
     }
 
     updateSelectedCount() {
         const count = this.selectedTransactions.size;
-        const bulkActions = document.getElementById('bulk-actions');
-        const bulkPlaceholder = document.getElementById('bulk-actions-placeholder');
         const selectedCountEl = document.getElementById('selected-count');
-
         if (selectedCountEl) {
             selectedCountEl.textContent = count;
         }
+    }
+
+    updateBulkActions() {
+        const count = this.selectedTransactions.size;
+        const bulkActions = document.getElementById('bulk-actions');
+        const bulkPlaceholder = document.getElementById('bulk-actions-placeholder');
 
         if (count > 0) {
             bulkActions?.classList.remove('hidden');
@@ -247,10 +339,20 @@ class InboxManager {
         }
     }
 
-    showTransactionDetails() {
-        const detailsPanel = document.getElementById('transaction-details');
-        if (detailsPanel) {
-            detailsPanel.classList.remove('hidden');
+    showLoadingState(element) {
+        const btn = element.closest('button');
+        if (btn && !btn.classList.contains('loading')) {
+            btn.classList.add('loading');
+            btn.style.position = 'relative';
+            btn.disabled = true;
+        }
+    }
+
+    hideLoadingState(element) {
+        const btn = element.closest('button');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
         }
     }
 
@@ -262,6 +364,7 @@ class InboxManager {
         if (preview && fileName && uploadBtn) {
             fileName.textContent = file.name;
             preview.classList.remove('hidden');
+            preview.classList.add('animate-fade-in');
             uploadBtn.disabled = false;
         }
     }
@@ -274,9 +377,13 @@ class InboxManager {
         if (!form) return;
 
         const formData = new FormData(form);
+        
+        // Show progress
         progressBar?.classList.remove('hidden');
+        const progressFill = progressBar?.querySelector('div');
+        
         uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Uploading...';
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
         try {
             const response = await fetch('/inbox/receipt/upload', {
@@ -287,16 +394,23 @@ class InboxManager {
             const result = await response.json();
 
             if (result.success) {
-                // Update UI to show receipt uploaded
-                this.showNotification('Receipt uploaded successfully', 'success');
-                this.closeReceiptModal();
-                
-                // Refresh transaction details if open
-                const detailsContent = document.getElementById('transaction-details-content');
-                if (detailsContent && detailsContent.innerHTML.trim()) {
-                    const transactionId = document.getElementById('receipt-transaction-id').value;
-                    htmx.ajax('GET', `/inbox/transaction/${transactionId}`, '#transaction-details-content');
+                // Animate progress to 100%
+                if (progressFill) {
+                    progressFill.style.width = '100%';
                 }
+                
+                this.showNotification('Receipt uploaded successfully', 'success');
+                setTimeout(() => this.closeReceiptModal(), 500);
+                
+                // Refresh transaction details and list
+                const transactionId = document.getElementById('receipt-transaction-id').value;
+                this.loadTransactionDetails(transactionId);
+                
+                // Update the transaction card
+                htmx.ajax('GET', `/inbox/transaction/${transactionId}/refresh`, {
+                    target: `[data-transaction-id="${transactionId}"]`,
+                    swap: 'outerHTML'
+                });
             } else {
                 this.showNotification(result.error || 'Upload failed', 'error');
             }
@@ -306,7 +420,7 @@ class InboxManager {
         } finally {
             progressBar?.classList.add('hidden');
             uploadBtn.disabled = false;
-            uploadBtn.textContent = 'Upload Receipt';
+            uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Receipt';
         }
     }
 
@@ -317,17 +431,27 @@ class InboxManager {
         if (modal && transactionIdInput) {
             transactionIdInput.value = transactionId;
             modal.classList.remove('hidden');
+            modal.classList.add('animate-fade-in');
             
             // Clear previous file selection
             this.clearFile();
+            
+            // Focus on drop zone for better UX
+            setTimeout(() => {
+                document.getElementById('drop-zone')?.focus();
+            }, 100);
         }
     }
 
     closeReceiptModal() {
         const modal = document.getElementById('receipt-modal');
         if (modal) {
-            modal.classList.add('hidden');
-            this.clearFile();
+            modal.classList.add('animate-fade-out');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('animate-fade-out');
+                this.clearFile();
+            }, 200);
         }
     }
 
@@ -338,23 +462,71 @@ class InboxManager {
 
         if (fileInput) fileInput.value = '';
         if (preview) preview.classList.add('hidden');
-        if (uploadBtn) uploadBtn.disabled = true;
+        if (uploadBtn) {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Receipt';
+        }
+    }
+
+    showQuickCategorize() {
+        if (this.currentTransactionIndex >= 0) {
+            const card = this.transactionCards[this.currentTransactionIndex];
+            const transactionId = card.dataset.transactionId;
+            this.loadTransactionDetails(transactionId);
+            
+            // Focus on category dropdown in details panel
+            setTimeout(() => {
+                const categorySelect = document.querySelector('#transaction-details select[name="categoryId"]');
+                categorySelect?.focus();
+            }, 300);
+        }
+    }
+
+    quickApprove() {
+        if (this.currentTransactionIndex >= 0) {
+            const card = this.transactionCards[this.currentTransactionIndex];
+            const transactionId = card.dataset.transactionId;
+            
+            htmx.ajax('POST', `/inbox/transaction/${transactionId}/approve`, {
+                target: `[data-transaction-id="${transactionId}"]`,
+                swap: 'outerHTML'
+            });
+            
+            this.showNotification('Transaction approved', 'success');
+        }
     }
 
     showNotification(message, type = 'info') {
-        // Create notification element
+        // Remove existing notifications
+        document.querySelectorAll('.notification').forEach(n => n.remove());
+        
+        // Create notification element with enhanced styling
         const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transition-all duration-300 ${
-            type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-            type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
-            'bg-blue-100 text-blue-800 border border-blue-200'
-        }`;
+        notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg max-w-sm transition-all duration-300 animate-slide-in-right`;
+        
+        const styles = {
+            success: 'background-color: var(--color-green-light); color: var(--color-green); border: var(--border-width) solid var(--color-green);',
+            error: 'background-color: var(--color-red-light); color: var(--color-red); border: var(--border-width) solid var(--color-red);',
+            info: 'background-color: var(--color-gray-50); color: var(--color-gray-700); border: var(--border-width) solid var(--border-color);'
+        };
+        
+        notification.style.cssText = styles[type] || styles.info;
+        notification.style.boxShadow = 'var(--shadow-lg)';
+        
+        const icons = {
+            success: 'check-circle',
+            error: 'exclamation-circle',
+            info: 'info-circle'
+        };
         
         notification.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
-                <span class="flex-1">${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-400 hover:text-gray-600">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                <i class="fas fa-${icons[type] || icons.info}" style="font-size: var(--text-lg);"></i>
+                <span style="flex: 1; font-weight: var(--font-medium);">${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="color: var(--color-gray-400); padding: var(--space-1); border-radius: var(--border-radius-sm); transition: all var(--transition-fast);"
+                        onmouseover="this.style.backgroundColor = 'var(--color-gray-200)'"
+                        onmouseout="this.style.backgroundColor = 'transparent'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -362,17 +534,19 @@ class InboxManager {
 
         document.body.appendChild(notification);
 
-        // Auto-remove after 5 seconds
+        // Auto-remove after 4 seconds
         setTimeout(() => {
-            notification.remove();
-        }, 5000);
+            notification.classList.add('animate-slide-out-right');
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
     }
 }
 
-// Bulk actions
+// Enhanced bulk actions with better UX
 async function applyBulkAction(action) {
     const inboxManager = window.inboxManager;
     if (!inboxManager || inboxManager.selectedTransactions.size === 0) {
+        inboxManager?.showNotification('No transactions selected', 'error');
         return;
     }
 
@@ -383,10 +557,18 @@ async function applyBulkAction(action) {
         const categorySelect = document.getElementById('bulk-category');
         value = categorySelect?.value;
         if (!value) {
-            inboxManager.showNotification('Please select a category', 'error');
+            inboxManager.showNotification('Please select a category first', 'error');
+            categorySelect?.focus();
             return;
         }
     }
+
+    // Show loading state
+    const actionButtons = document.querySelectorAll('#bulk-actions button');
+    actionButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('loading');
+    });
 
     try {
         const response = await fetch('/inbox/bulk-action', {
@@ -404,28 +586,58 @@ async function applyBulkAction(action) {
         const result = await response.json();
 
         if (result.success) {
-            inboxManager.showNotification(`${result.updatedCount} transactions updated`, 'success');
+            const actionText = {
+                categorize: 'categorized',
+                approve: 'approved',
+                reject: 'rejected'
+            }[action] || 'updated';
             
-            // Refresh the transaction list
-            htmx.ajax('GET', '/inbox/search', {
+            inboxManager.showNotification(
+                `${result.updatedCount} transactions ${actionText}`, 
+                'success'
+            );
+            
+            // Refresh the transaction list with current filters
+            const searchParams = new URLSearchParams();
+            searchParams.set('search', document.getElementById('search-input')?.value || '');
+            
+            // Add status filters
+            document.querySelectorAll('[name="status"]:checked').forEach(cb => {
+                searchParams.append('status', cb.value);
+            });
+            
+            // Add category filters
+            document.querySelectorAll('[name="category"]:checked').forEach(cb => {
+                searchParams.append('category', cb.value);
+            });
+            
+            htmx.ajax('GET', `/inbox/search?${searchParams.toString()}`, {
                 target: '#transaction-list',
-                values: {
-                    q: document.getElementById('search-input')?.value || '',
-                    status: Array.from(document.querySelectorAll('[name="status"]:checked')).map(cb => cb.value).join(','),
-                    category: Array.from(document.querySelectorAll('[name="category"]:checked')).map(cb => cb.value).join(',')
-                }
+                swap: 'innerHTML'
             });
             
             // Clear selections
             inboxManager.selectedTransactions.clear();
             inboxManager.updateSelectedCount();
+            inboxManager.updateBulkActions();
+            
+            // Reset category selector
+            if (action === 'categorize') {
+                document.getElementById('bulk-category').value = '';
+            }
             
         } else {
             inboxManager.showNotification(result.error || 'Bulk action failed', 'error');
         }
     } catch (error) {
         console.error('Bulk action error:', error);
-        inboxManager.showNotification('Bulk action failed', 'error');
+        inboxManager.showNotification('Connection error. Please try again.', 'error');
+    } finally {
+        // Remove loading state
+        actionButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        });
     }
 }
 
@@ -442,7 +654,68 @@ function clearFile() {
     window.inboxManager?.clearFile();
 }
 
+function showTransactionDetails(transactionId) {
+    const card = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+    if (card) {
+        window.inboxManager?.selectTransactionCard(card);
+    }
+}
+
+function hideTransactionDetails() {
+    window.inboxManager?.hideTransactionDetails();
+}
+
+// Enhanced search functionality
+function setupEnhancedSearch() {
+    const searchInput = document.getElementById('search-input');
+    const globalSearch = document.getElementById('global-search');
+    
+    [searchInput, globalSearch].forEach(input => {
+        if (input) {
+            input.addEventListener('focus', function() {
+                this.style.transform = 'scale(1.02)';
+                this.style.boxShadow = 'var(--shadow)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'none';
+            });
+        }
+    });
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.inboxManager = new InboxManager();
+    window.inboxManager = new WireframeInboxManager();
+    setupEnhancedSearch();
+    
+    // Add global fade-in animation
+    document.body.classList.add('animate-fade-in');
+    
+    // Enhanced focus management
+    document.addEventListener('focusin', (e) => {
+        if (e.target.matches('input, select, textarea, button')) {
+            e.target.style.outline = '2px solid var(--color-accent)';
+            e.target.style.outlineOffset = '2px';
+        }
+    });
+    
+    document.addEventListener('focusout', (e) => {
+        if (e.target.matches('input, select, textarea, button')) {
+            e.target.style.outline = 'none';
+        }
+    });
+    
+    console.log('🎨 Wireframe Expense Platform loaded successfully!');
+});
+
+// Performance optimization: debounce resize events
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Recalculate layout if needed
+        window.inboxManager?.updateTransactionCards();
+    }, 250);
 });
