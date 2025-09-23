@@ -192,15 +192,15 @@ app.use('/api/plaid', plaidRoutes);
 try {
   // Import and mount inbox routes
   const inboxRoutes = require('./routes/inbox/inboxRoutes');
-  app.use('/inbox', inboxRoutes);
+  app.use('/inbox', inboxRoutes.default || inboxRoutes);
   
   // Import and mount receipt routes
   const receiptRoutes = require('./routes/receipts');
-  app.use('/api/receipts', receiptRoutes);
+  app.use('/api/receipts', receiptRoutes.default || receiptRoutes);
   
   // Import and mount matching routes
   const matchingRoutes = require('./routes/matching');
-  app.use('/api/matching', matchingRoutes);
+  app.use('/api/matching', matchingRoutes.default || matchingRoutes);
   
   logger.info('Successfully loaded new integrated routes');
 } catch (error) {
