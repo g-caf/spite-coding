@@ -170,6 +170,16 @@ class TransactionService {
   }
 }
 
+// Simple test route for receipt theme
+router.get('/test-receipt', (req, res) => {
+  res.send(`
+    <html>
+    <head><style>body { background: linear-gradient(135deg, #8FA7D9 0%, #7B92C7 50%, #6B82B8 100%); }</style></head>
+    <body><h1 style="color: white; text-align: center; font-family: monospace; padding: 50px;">RECEIPT THEME TEST - WORKING!</h1></body>
+    </html>
+  `);
+});
+
 // Receipt theme view
 router.get('/', async (req, res) => {
   try {
@@ -201,6 +211,8 @@ router.get('/', async (req, res) => {
       })
     }));
 
+    // Force render receipt template
+    console.log('Attempting to render receipt template...');
     res.render('inbox/receipt', {
       transactions: formattedTransactions,
       categories,
