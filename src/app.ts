@@ -29,6 +29,7 @@ function safeUseRouter(app: any, path: string, router: any, name: string) {
 
 import { TransactionMatcher } from './services/matching/TransactionMatcher';
 import plaidRoutes, { initializePlaidRoutes } from './routes/plaid';
+import inboxRoutes from './routes/inbox/inboxRoutes';
 
 // Configure logger
 const logger = winston.createLogger({
@@ -190,9 +191,8 @@ app.use('/api/plaid', plaidRoutes);
 
 // Add new integrated routes (with error handling to prevent breaking existing app)
 try {
-  // Import and mount inbox routes
-  const inboxRoutes = require('./routes/inbox/inboxRoutes');
-  app.use('/inbox', inboxRoutes.default || inboxRoutes);
+  // Mount inbox routes
+  app.use('/inbox', inboxRoutes);
   
   // Import and mount receipt routes
   const receiptRoutes = require('./routes/receipts');
