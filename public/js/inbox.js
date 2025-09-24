@@ -65,57 +65,8 @@ class WireframeInboxManager {
     }
 
     setupDragDrop() {
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('receipt-file');
-
-        if (dropZone && fileInput) {
-            // Click to select file
-            dropZone.addEventListener('click', () => fileInput.click());
-
-            // Drag and drop events with enhanced visual feedback
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = 'var(--color-accent)';
-                dropZone.style.backgroundColor = 'var(--color-gray-50)';
-                dropZone.style.transform = 'scale(1.02)';
-            });
-
-            dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = 'var(--border-color)';
-                dropZone.style.backgroundColor = 'transparent';
-                dropZone.style.transform = 'scale(1)';
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = 'var(--border-color)';
-                dropZone.style.backgroundColor = 'transparent';
-                dropZone.style.transform = 'scale(1)';
-                
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    fileInput.files = files;
-                    this.handleFileSelect(files[0]);
-                }
-            });
-
-            // File input change
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    this.handleFileSelect(e.target.files[0]);
-                }
-            });
-        }
-
-        // Receipt form submission
-        const receiptForm = document.getElementById('receipt-form');
-        if (receiptForm) {
-            receiptForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.uploadReceipt();
-            });
-        }
+        // Drag and drop now handled inline at each transaction level
+        // No central modal drag zone needed
     }
 
     setupKeyboardNavigation() {
@@ -144,8 +95,8 @@ class WireframeInboxManager {
                     e.preventDefault();
                     if (this.currentTransactionIndex >= 0) {
                         const card = this.transactionCards[this.currentTransactionIndex];
-                        const transactionId = card.dataset.transactionId;
-                        this.openReceiptModal(transactionId);
+                        // Receipt upload now handled inline - no modal needed
+                        return;
                     }
                     break;
                 case 'enter':
@@ -369,104 +320,9 @@ class WireframeInboxManager {
         }
     }
 
-    async uploadReceipt() {
-        const form = document.getElementById('receipt-form');
-        const progressBar = document.getElementById('upload-progress');
-        const uploadBtn = document.getElementById('upload-btn');
+    // uploadReceipt function removed - now using inline upload functionality
 
-        if (!form) return;
 
-        const formData = new FormData(form);
-        
-        // Show progress
-        progressBar?.classList.remove('hidden');
-        const progressFill = progressBar?.querySelector('div');
-        
-        uploadBtn.disabled = true;
-        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-
-        try {
-            const response = await fetch('/inbox/receipt/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                // Animate progress to 100%
-                if (progressFill) {
-                    progressFill.style.width = '100%';
-                }
-                
-                this.showNotification('Receipt uploaded successfully', 'success');
-                setTimeout(() => this.closeReceiptModal(), 500);
-                
-                // Refresh transaction details and list
-                const transactionId = document.getElementById('receipt-transaction-id').value;
-                this.loadTransactionDetails(transactionId);
-                
-                // Update the transaction card
-                htmx.ajax('GET', `/inbox/transaction/${transactionId}/refresh`, {
-                    target: `[data-transaction-id="${transactionId}"]`,
-                    swap: 'outerHTML'
-                });
-            } else {
-                this.showNotification(result.error || 'Upload failed', 'error');
-            }
-        } catch (error) {
-            console.error('Upload error:', error);
-            this.showNotification('Upload failed', 'error');
-        } finally {
-            progressBar?.classList.add('hidden');
-            uploadBtn.disabled = false;
-            uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Receipt';
-        }
-    }
-
-    openReceiptModal(transactionId) {
-        const modal = document.getElementById('receipt-modal');
-        const transactionIdInput = document.getElementById('receipt-transaction-id');
-        
-        if (modal && transactionIdInput) {
-            transactionIdInput.value = transactionId;
-            modal.classList.remove('hidden');
-            modal.classList.add('animate-fade-in');
-            
-            // Clear previous file selection
-            this.clearFile();
-            
-            // Focus on drop zone for better UX
-            setTimeout(() => {
-                document.getElementById('drop-zone')?.focus();
-            }, 100);
-        }
-    }
-
-    closeReceiptModal() {
-        const modal = document.getElementById('receipt-modal');
-        if (modal) {
-            modal.classList.add('animate-fade-out');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.classList.remove('animate-fade-out');
-                this.clearFile();
-            }, 200);
-        }
-    }
-
-    clearFile() {
-        const fileInput = document.getElementById('receipt-file');
-        const preview = document.getElementById('file-preview');
-        const uploadBtn = document.getElementById('upload-btn');
-
-        if (fileInput) fileInput.value = '';
-        if (preview) preview.classList.add('hidden');
-        if (uploadBtn) {
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Receipt';
-        }
-    }
 
     showQuickCategorize() {
         if (this.currentTransactionIndex >= 0) {
@@ -641,18 +497,7 @@ async function applyBulkAction(action) {
     }
 }
 
-// Global functions for modal management
-function openReceiptModal(transactionId) {
-    window.inboxManager?.openReceiptModal(transactionId);
-}
 
-function closeReceiptModal() {
-    window.inboxManager?.closeReceiptModal();
-}
-
-function clearFile() {
-    window.inboxManager?.clearFile();
-}
 
 function showTransactionDetails(transactionId) {
     const card = document.querySelector(`[data-transaction-id="${transactionId}"]`);
@@ -707,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    console.log('🎨 Wireframe Expense Platform loaded successfully!');
+    console.log('Wireframe Expense Platform loaded successfully!');
 });
 
 // Performance optimization: debounce resize events

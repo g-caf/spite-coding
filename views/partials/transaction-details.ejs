@@ -14,7 +14,6 @@
             <% const category = categories.find(c => c.id === transaction.category_id); %>
             <% if (category) { %>
             <div class="category-pill">
-                <span class="category-pill-icon"><%= category.icon %></span>
                 <span><%= category.name %></span>
             </div>
             <% } %>
@@ -66,7 +65,7 @@
                 <% categories.forEach(category => { %>
                 <option value="<%= category.id %>" 
                         <%= transaction.category_id === category.id ? 'selected' : '' %>>
-                    <%= category.icon %> <%= category.name %>
+                    <%= category.name %>
                 </option>
                 <% }); %>
             </select>
@@ -81,7 +80,6 @@
                     hx-swap="outerHTML"
                     class="category-pill <%= transaction.category_id === category.id ? 'selected' : '' %>" 
                     style="cursor: pointer; border: var(--border-width) solid var(--border-color); <%= transaction.category_id === category.id ? 'background-color: var(--color-accent); color: var(--color-white); border-color: var(--color-accent);' : '' %>">
-                <span class="category-pill-icon"><%= category.icon %></span>
                 <span><%= category.name %></span>
             </button>
             <% }); %>
@@ -92,10 +90,6 @@
     <section class="details-section">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
             <h4 class="details-section-title" style="margin-bottom: 0;">Receipt</h4>
-            <button onclick="openReceiptModal('<%= transaction.id %>')" class="btn btn-secondary">
-                <i class="fas fa-upload"></i>
-                Upload
-            </button>
         </div>
         
         <% if (transaction.receipt_url) { %>
@@ -137,15 +131,25 @@
             <% } %>
         </div>
         <% } else { %>
-        <div style="border: 2px dashed var(--border-color); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer;"
-             onclick="openReceiptModal('<%= transaction.id %>')"
-             onmouseover="this.style.borderColor = 'var(--color-accent)'; this.style.backgroundColor = 'var(--color-gray-50)'"
-             onmouseout="this.style.borderColor = 'var(--border-color)'; this.style.backgroundColor = 'transparent'">
-            <i class="fas fa-receipt" style="font-size: 2rem; color: var(--color-gray-300); margin-bottom: var(--space-3); display: block;"></i>
-            <p style="font-size: var(--text-sm); color: var(--color-gray-500); margin-bottom: var(--space-3);">No receipt uploaded</p>
-            <div class="btn btn-secondary">
-                <i class="fas fa-upload"></i>
-                Upload Receipt
+        <!-- Inline Upload Area -->
+        <div class="transaction-upload-area" data-transaction-id="<%= transaction.id %>">
+            <input type="file" 
+                   id="file-input-details-<%= transaction.id %>" 
+                   accept="image/*,.pdf" 
+                   style="display: none;"
+                   onchange="handleFileUpload(this, '<%= transaction.id %>')">
+            <div class="upload-drop-zone" 
+                 ondrop="handleDrop(event, '<%= transaction.id %>')"
+                 ondragover="event.preventDefault(); event.currentTarget.classList.add('dragover')"
+                 ondragleave="event.currentTarget.classList.remove('dragover')"
+                 onclick="document.getElementById('file-input-details-<%= transaction.id %>').click()"
+                 style="border: 2px dashed var(--border-color); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer; transition: all var(--transition-fast);">
+                <i class="fas fa-receipt" style="font-size: 2rem; color: var(--color-gray-300); margin-bottom: var(--space-3); display: block;"></i>
+                <p style="font-size: var(--text-sm); color: var(--color-gray-500); margin-bottom: var(--space-3);">Drop receipt here or click to browse</p>
+                <div class="btn btn-secondary">
+                    <i class="fas fa-upload"></i>
+                    Upload Receipt
+                </div>
             </div>
         </div>
         <% } %>
@@ -228,6 +232,59 @@ function hideTransactionDetails() {
     // Remove selection from all cards
     document.querySelectorAll('.transaction-card').forEach(card => {
         card.classList.remove('selected');
+    });
+}
+
+function handleDrop(event, transactionId) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('dragover');
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        uploadFile(files[0], transactionId);
+    }
+}
+
+function handleFileUpload(input, transactionId) {
+    if (input.files.length > 0) {
+        uploadFile(input.files[0], transactionId);
+    }
+}
+
+function uploadFile(file, transactionId) {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    formData.append('transactionId', transactionId);
+    
+    // Show uploading state
+    const uploadArea = document.querySelector(`[data-transaction-id="${transactionId}"] .upload-drop-zone`);
+    const originalHTML = uploadArea.innerHTML;
+    uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: var(--space-3);"></i><p>Uploading...</p>';
+    
+    fetch('/inbox/receipt/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            uploadArea.innerHTML = '<i class="fas fa-check" style="font-size: 2rem; color: var(--color-green); margin-bottom: var(--space-3);"></i><p>Uploaded Successfully!</p>';
+            // Refresh transaction details after 1 second
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            uploadArea.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--color-red); margin-bottom: var(--space-3);"></i><p>Upload Failed</p>';
+            setTimeout(() => {
+                uploadArea.innerHTML = originalHTML;
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        uploadArea.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--color-red); margin-bottom: var(--space-3);"></i><p>Upload Error</p>';
+        setTimeout(() => {
+            uploadArea.innerHTML = originalHTML;
+        }, 2000);
     });
 }
 

@@ -51,7 +51,6 @@
                 <% const category = categories.find(c => c.id === transaction.category_id); %>
                 <% if (category) { %>
                 <div class="category-pill">
-                    <span class="category-pill-icon"><%= category.icon %></span>
                     <span><%= category.name %></span>
                 </div>
                 <% } %>
@@ -66,14 +65,27 @@
             <i class="fas fa-paperclip receipt-indicator <%= transaction.receipt_url ? 'has-receipt' : '' %>" 
                title="<%= transaction.receipt_url ? 'Has receipt' : 'No receipt' %>"></i>
             
-            <!-- Inline Actions -->
-            <div class="transaction-actions">
-                <button onclick="event.stopPropagation(); openReceiptModal('<%= transaction.id %>')" 
-                        class="transaction-action" 
-                        title="Upload receipt">
+            <!-- Inline Upload Area -->
+            <div class="transaction-upload-area" 
+                 data-transaction-id="<%= transaction.id %>"
+                 onclick="event.stopPropagation();">
+                <input type="file" 
+                       id="file-input-<%= transaction.id %>" 
+                       accept="image/*,.pdf" 
+                       style="display: none;"
+                       onchange="handleFileUpload(this, '<%= transaction.id %>')">
+                <div class="upload-drop-zone" 
+                     ondrop="handleDrop(event, '<%= transaction.id %>')"
+                     ondragover="event.preventDefault(); event.currentTarget.classList.add('dragover')"
+                     ondragleave="event.currentTarget.classList.remove('dragover')"
+                     onclick="document.getElementById('file-input-<%= transaction.id %>').click()">
                     <i class="fas fa-upload"></i>
-                </button>
-                
+                    <span>Upload Receipt</span>
+                </div>
+            </div>
+            
+            <!-- Other Actions -->
+            <div class="transaction-actions">
                 <button onclick="event.stopPropagation(); quickCategorize('<%= transaction.id %>')" 
                         class="transaction-action" 
                         title="Quick categorize">
@@ -120,14 +132,68 @@ function showTransactionDetails(transactionId) {
     document.querySelector(`[data-transaction-id="${transactionId}"]`).classList.add('selected');
 }
 
+function handleDrop(event, transactionId) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('dragover');
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        uploadFile(files[0], transactionId);
+    }
+}
+
+function handleFileUpload(input, transactionId) {
+    if (input.files.length > 0) {
+        uploadFile(input.files[0], transactionId);
+    }
+}
+
+function uploadFile(file, transactionId) {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    formData.append('transactionId', transactionId);
+    
+    // Show uploading state
+    const uploadArea = document.querySelector(`[data-transaction-id="${transactionId}"] .upload-drop-zone`);
+    const originalContent = uploadArea.innerHTML;
+    uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Uploading...</span>';
+    
+    fetch('/inbox/receipt/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            uploadArea.innerHTML = '<i class="fas fa-check" style="color: var(--color-green);"></i><span>Uploaded!</span>';
+            // Refresh the entire page after a short delay to show updated receipt status
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            uploadArea.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--color-red);"></i><span>Failed</span>';
+            setTimeout(() => {
+                uploadArea.innerHTML = originalContent;
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        uploadArea.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--color-red);"></i><span>Error</span>';
+        setTimeout(() => {
+            uploadArea.innerHTML = originalContent;
+        }, 2000);
+    });
+}
+
 function quickCategorize(transactionId) {
     // Create a simple category selection dropdown
     const categories = <%- JSON.stringify(categories) %>;
     const options = categories.map(cat => 
-        `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`
+        `<option value="${cat.id}">${cat.name}</option>`
     ).join('');
     
-    const categoryId = prompt('Choose category:\n' + categories.map((cat, i) => `${i+1}. ${cat.icon} ${cat.name}`).join('\n'));
+    const categoryId = prompt('Choose category:\n' + categories.map((cat, i) => `${i+1}. ${cat.name}`).join('\n'));
     
     if (categoryId) {
         htmx.ajax('POST', `/inbox/transaction/${transactionId}/category`, {

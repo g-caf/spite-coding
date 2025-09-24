@@ -132,11 +132,11 @@ class TransactionService {
 
   static async getCategories(organizationId) {
     return [
-      { id: 'cat1', organization_id: 'org1', name: 'Office Supplies', color: '#3B82F6', icon: '📝', created_at: new Date() },
-      { id: 'cat2', organization_id: 'org1', name: 'Meals & Entertainment', color: '#EF4444', icon: '🍽️', created_at: new Date() },
-      { id: 'cat3', organization_id: 'org1', name: 'Software & Tools', color: '#10B981', icon: '💻', created_at: new Date() },
-      { id: 'cat4', organization_id: 'org1', name: 'Travel', color: '#F59E0B', icon: '✈️', created_at: new Date() },
-      { id: 'cat5', organization_id: 'org1', name: 'Marketing', color: '#8B5CF6', icon: '📢', created_at: new Date() }
+      { id: 'cat1', organization_id: 'org1', name: 'Office Supplies', color: '#3B82F6', icon: '', created_at: new Date() },
+{ id: 'cat2', organization_id: 'org1', name: 'Meals & Entertainment', color: '#EF4444', icon: '', created_at: new Date() },
+{ id: 'cat3', organization_id: 'org1', name: 'Software & Tools', color: '#10B981', icon: '', created_at: new Date() },
+      { id: 'cat4', organization_id: 'org1', name: 'Travel', color: '#F59E0B', icon: '', created_at: new Date() },
+      { id: 'cat5', organization_id: 'org1', name: 'Marketing', color: '#8B5CF6', icon: '', created_at: new Date() }
     ];
   }
 

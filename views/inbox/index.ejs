@@ -90,7 +90,6 @@
                        hx-include="#search-input, [name='status']:checked, [name='category']:checked"
                        class="filter-checkbox">
                 <div class="filter-label">
-                    <span style="margin-right: 0.5rem;"><%= category.icon %></span>
                     <%= category.name %>
                 </div>
             </label>
@@ -110,7 +109,7 @@
                 <select id="bulk-category" class="form-select">
                     <option value="">Choose category...</option>
                     <% categories.forEach(category => { %>
-                    <option value="<%= category.id %>"><%= category.icon %> <%= category.name %></option>
+                    <option value="<%= category.id %>"><%= category.name %></option>
                     <% }); %>
                 </select>
                 
@@ -209,61 +208,46 @@
     </div>
 </aside>
 
-<!-- Receipt Upload Modal -->
-<div id="receipt-modal" class="hidden" style="position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 100;">
-    <div style="background: white; border-radius: var(--border-radius-lg); padding: 2rem; max-width: 32rem; width: 100%; margin: 1rem; box-shadow: var(--shadow-lg);">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-            <h3 style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--color-gray-900);">Upload Receipt</h3>
-            <button onclick="closeReceiptModal()" class="btn-icon">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <form id="receipt-form" enctype="multipart/form-data">
-            <input type="hidden" id="receipt-transaction-id" name="transactionId">
-            
-            <!-- Drag & Drop Area -->
-            <div id="drop-zone" 
-                 style="border: 2px dashed var(--border-color); border-radius: var(--border-radius-lg); padding: 3rem; text-align: center; cursor: pointer; transition: all var(--transition-fast);"
-                 onmouseover="this.style.borderColor = 'var(--color-accent)'; this.style.backgroundColor = 'var(--color-gray-50)'"
-                 onmouseout="this.style.borderColor = 'var(--border-color)'; this.style.backgroundColor = 'transparent'">
-                <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--color-gray-400); margin-bottom: 1rem; display: block;"></i>
-                <p style="color: var(--color-gray-600); margin-bottom: 0.5rem; font-weight: var(--font-medium);">Drag and drop your receipt here, or click to browse</p>
-                <p style="font-size: var(--text-sm); color: var(--color-gray-500);">Supports JPG, PNG, GIF, and PDF files up to 10MB</p>
-                <input type="file" id="receipt-file" name="receipt" accept="image/*,.pdf" style="display: none;">
-            </div>
-            
-            <!-- Preview -->
-            <div id="file-preview" class="hidden" style="margin-top: 1rem; padding: 1rem; background-color: var(--color-gray-50); border-radius: var(--border-radius);">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: var(--space-2);">
-                        <i class="fas fa-file-alt" style="color: var(--color-accent);"></i>
-                        <span id="file-name" style="font-size: var(--text-sm); font-weight: var(--font-medium);"></span>
-                    </div>
-                    <button type="button" onclick="clearFile()" class="btn-icon" style="color: var(--color-red);">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Upload Progress -->
-            <div id="upload-progress" class="hidden" style="margin-top: 1rem;">
-                <div style="background-color: var(--color-gray-200); border-radius: 9999px; height: 0.5rem; overflow: hidden;">
-                    <div style="background-color: var(--color-accent); height: 100%; border-radius: 9999px; width: 0%; transition: width var(--transition);"></div>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: var(--space-3); margin-top: 2rem;">
-                <button type="button" onclick="closeReceiptModal()" class="btn btn-secondary" style="flex: 1;">
-                    Cancel
-                </button>
-                <button type="submit" id="upload-btn" disabled class="btn btn-primary" style="flex: 1;">
-                    Upload Receipt
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- CSS for inline upload areas -->
+<style>
+.transaction-upload-area {
+    margin-bottom: 0.5rem;
+}
+
+.upload-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background-color: var(--color-gray-50);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.upload-drop-zone:hover {
+    border-color: var(--color-accent);
+    background-color: var(--color-gray-100);
+}
+
+.upload-drop-zone.dragover {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent-light);
+    transform: scale(1.02);
+}
+
+.upload-drop-zone i {
+    color: var(--color-gray-500);
+}
+
+.upload-drop-zone:hover i {
+    color: var(--color-accent);
+}
+</style>
 
 <script>
 // Enhanced bulk actions handling
@@ -307,36 +291,7 @@ document.addEventListener('change', function(e) {
     }
 });
 
-// Receipt modal functions
-function openReceiptModal(transactionId) {
-    document.getElementById('receipt-transaction-id').value = transactionId;
-    document.getElementById('receipt-modal').classList.remove('hidden');
-}
 
-function closeReceiptModal() {
-    document.getElementById('receipt-modal').classList.add('hidden');
-    clearFile();
-}
-
-function clearFile() {
-    document.getElementById('receipt-file').value = '';
-    document.getElementById('file-preview').classList.add('hidden');
-    document.getElementById('upload-btn').disabled = true;
-}
-
-// Drag and drop functionality
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('receipt-file');
-
-dropZone.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', function() {
-    if (this.files[0]) {
-        document.getElementById('file-name').textContent = this.files[0].name;
-        document.getElementById('file-preview').classList.remove('hidden');
-        document.getElementById('upload-btn').disabled = false;
-    }
-});
 
 // Enhanced bulk actions
 function applyBulkAction(action) {
