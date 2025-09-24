@@ -1,0 +1,307 @@
+/* Receipt Theme CSS */
+
+/* Blue background like in the photo */
+body {
+    background: linear-gradient(135deg, #8FA7D9 0%, #7B92C7 50%, #6B82B8 100%);
+    margin: 0;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+}
+
+/* Receipt container with fixed positioning */
+.receipt-container {
+    max-width: 400px;
+    margin: 0 auto;
+    background: white;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Serrated edges using CSS */
+.receipt-container::before,
+.receipt-container::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 15px;
+    background: white;
+    z-index: 1;
+}
+
+/* Top serrated edge */
+.receipt-container::before {
+    top: -8px;
+    background: radial-gradient(circle at 10px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 30px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 50px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 70px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 90px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 110px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 130px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 150px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 170px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 190px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 210px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 230px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 250px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 270px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 290px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 310px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 330px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 350px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 370px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 390px 50%, transparent 5px, white 5px);
+    background-size: 20px 15px;
+}
+
+/* Bottom serrated edge */
+.receipt-container::after {
+    bottom: -8px;
+    background: radial-gradient(circle at 10px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 30px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 50px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 70px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 90px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 110px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 130px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 150px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 170px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 190px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 210px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 230px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 250px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 270px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 290px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 310px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 330px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 350px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 370px 50%, transparent 5px, white 5px),
+                radial-gradient(circle at 390px 50%, transparent 5px, white 5px);
+    background-size: 20px 15px;
+}
+
+/* Receipt header - fixed */
+.receipt-header {
+    padding: 30px 25px 20px;
+    text-align: center;
+    border-bottom: 2px dotted #ccc;
+    position: relative;
+    z-index: 2;
+    background: white;
+    flex-shrink: 0;
+}
+
+.receipt-title {
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin: 0 0 10px;
+    color: #333;
+}
+
+.receipt-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+.receipt-date {
+    font-size: 11px;
+    color: #888;
+    margin-top: 10px;
+}
+
+/* Scrollable transaction section */
+.receipt-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    background: white;
+}
+
+/* Receipt line items */
+.receipt-item {
+    padding: 12px 25px;
+    border-bottom: 1px dotted #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 12px;
+    line-height: 1.3;
+    position: relative;
+}
+
+.receipt-item:hover {
+    background-color: #f8f9fa;
+}
+
+.receipt-item-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.receipt-item-name {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 3px;
+    word-wrap: break-word;
+}
+
+.receipt-item-details {
+    color: #666;
+    font-size: 10px;
+    margin-bottom: 2px;
+}
+
+.receipt-item-status {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #888;
+}
+
+.receipt-item-right {
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 15px;
+}
+
+.receipt-item-amount {
+    font-weight: bold;
+    color: #333;
+    font-size: 13px;
+}
+
+/* Upload area styled as receipt element */
+.receipt-upload {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border: 1px dashed #ccc;
+    border-radius: 3px;
+    background: #fafafa;
+    text-align: center;
+    font-size: 9px;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.receipt-upload:hover {
+    border-color: #666;
+    background: #f0f0f0;
+    color: #333;
+}
+
+.receipt-upload.dragover {
+    border-color: #333;
+    background: #e8e8e8;
+}
+
+/* Receipt footer - fixed */
+.receipt-footer {
+    padding: 20px 25px 30px;
+    border-top: 2px dotted #ccc;
+    text-align: center;
+    background: white;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.receipt-total {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.receipt-total-line {
+    border-bottom: 2px dotted #ccc;
+    margin-bottom: 15px;
+}
+
+.receipt-barcode {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.receipt-thanks {
+    font-size: 10px;
+    color: #888;
+}
+
+/* Sidebar hidden on receipt theme */
+.app-sidebar {
+    display: none;
+}
+
+/* Main content takes full width */
+.app-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
+/* Hide other elements not needed in receipt view */
+.feed-header,
+.app-details {
+    display: none;
+}
+
+/* Custom scrollbar for receipt body */
+.receipt-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.receipt-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.receipt-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.receipt-body::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+/* Status indicators as receipt stamps */
+.receipt-status {
+    display: inline-block;
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.receipt-status.unmatched {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.receipt-status.categorized {
+    background: #d4edda;
+    color: #155724;
+}
+
+.receipt-status.approved {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Print-like texture */
+.receipt-container {
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120,119,198,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120,119,198,0.03) 0%, transparent 50%),
+        white;
+}

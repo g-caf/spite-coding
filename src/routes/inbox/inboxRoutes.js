@@ -170,8 +170,58 @@ class TransactionService {
   }
 }
 
-// Main inbox view
+// Receipt theme view
 router.get('/', async (req, res) => {
+  try {
+    const organizationId = 'org1'; // Mock org for now
+    const page = parseInt(req.query.page) || 1;
+    const search = req.query.search || '';
+    const status = req.query.status || '';
+    const category = req.query.category || '';
+
+    const filters = { page, limit: 20 };
+    if (search) filters.search = search;
+    if (status) filters.status = status.split(',');
+    if (category) filters.category_id = category.split(',');
+
+    const [result, categories, statusCounts] = await Promise.all([
+      TransactionService.getTransactions(organizationId, filters),
+      TransactionService.getCategories(organizationId),
+      TransactionService.getStatusCounts(organizationId)
+    ]);
+
+    // Format amounts for display
+    const formattedTransactions = result.transactions.map(t => ({
+      ...t,
+      formattedAmount: `$${(t.amount / 100).toFixed(2)}`,
+      formattedDate: t.date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    }));
+
+    res.render('inbox/receipt', {
+      transactions: formattedTransactions,
+      categories,
+      statusCounts,
+      pagination: {
+        current: result.page,
+        total: result.totalPages,
+        hasNext: result.page < result.totalPages,
+        hasPrev: result.page > 1
+      },
+      filters: { search, status, category },
+      title: 'Expense Receipt'
+    });
+  } catch (error) {
+    console.error('Inbox error:', error);
+    res.status(500).render('error', { message: 'Failed to load inbox' });
+  }
+});
+
+// Classic inbox view (backup)
+router.get('/classic', async (req, res) => {
   try {
     const organizationId = 'org1'; // Mock org for now
     const page = parseInt(req.query.page) || 1;
