@@ -180,8 +180,12 @@ router.get('/test-receipt', (req, res) => {
   `);
 });
 
-// Receipt theme view
+// Receipt theme view - TESTING
 router.get('/', async (req, res) => {
+  // TEMPORARY TEST - REMOVE AFTER CONFIRMING
+  res.send('<html><body style="background: linear-gradient(135deg, #8FA7D9 0%, #7B92C7 50%, #6B82B8 100%); color: white; font-family: monospace; text-align: center; padding: 100px;"><h1>RECEIPT THEME ROUTE IS WORKING!</h1><p>This confirms the JavaScript route file is being used.</p></body></html>');
+  return;
+  
   try {
     const organizationId = 'org1'; // Mock org for now
     const page = parseInt(req.query.page) || 1;
