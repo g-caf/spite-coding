@@ -21,68 +21,72 @@ body {
     flex-direction: column;
 }
 
-/* Serrated edges using CSS */
+/* Serrated cut paper edges using clip-path for better browser support */
 .receipt-container::before,
 .receipt-container::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    height: 15px;
+    height: 8px;
     background: white;
     z-index: 1;
 }
 
-/* Top serrated edge */
+/* Top serrated edge - zigzag cut */
 .receipt-container::before {
-    top: -8px;
-    background: radial-gradient(circle at 10px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 30px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 50px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 70px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 90px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 110px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 130px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 150px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 170px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 190px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 210px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 230px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 250px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 270px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 290px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 310px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 330px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 350px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 370px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 390px 50%, transparent 5px, white 5px);
-    background-size: 20px 15px;
+    top: -4px;
+    clip-path: polygon(
+        0% 100%, 
+        5% 0%, 
+        10% 100%, 
+        15% 0%, 
+        20% 100%, 
+        25% 0%, 
+        30% 100%, 
+        35% 0%, 
+        40% 100%, 
+        45% 0%, 
+        50% 100%, 
+        55% 0%, 
+        60% 100%, 
+        65% 0%, 
+        70% 100%, 
+        75% 0%, 
+        80% 100%, 
+        85% 0%, 
+        90% 100%, 
+        95% 0%, 
+        100% 100%
+    );
 }
 
-/* Bottom serrated edge */
+/* Bottom serrated edge - zigzag cut */
 .receipt-container::after {
-    bottom: -8px;
-    background: radial-gradient(circle at 10px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 30px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 50px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 70px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 90px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 110px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 130px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 150px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 170px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 190px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 210px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 230px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 250px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 270px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 290px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 310px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 330px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 350px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 370px 50%, transparent 5px, white 5px),
-                radial-gradient(circle at 390px 50%, transparent 5px, white 5px);
-    background-size: 20px 15px;
+    bottom: -4px;
+    clip-path: polygon(
+        0% 0%, 
+        5% 100%, 
+        10% 0%, 
+        15% 100%, 
+        20% 0%, 
+        25% 100%, 
+        30% 0%, 
+        35% 100%, 
+        40% 0%, 
+        45% 100%, 
+        50% 0%, 
+        55% 100%, 
+        60% 0%, 
+        65% 100%, 
+        70% 0%, 
+        75% 100%, 
+        80% 0%, 
+        85% 100%, 
+        90% 0%, 
+        95% 100%, 
+        100% 0%
+    );
 }
 
 /* Receipt header - fixed */
@@ -199,6 +203,55 @@ body {
 .receipt-upload.dragover {
     border-color: #333;
     background: #e8e8e8;
+}
+
+/* Editable description field */
+.receipt-description-edit {
+    background: transparent;
+    border: none;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    border-bottom: 1px dotted transparent;
+    transition: border-color 0.2s ease;
+}
+
+.receipt-description-edit:hover {
+    border-bottom-color: #ccc;
+}
+
+.receipt-description-edit:focus {
+    outline: none;
+    border-bottom-color: #333;
+    background: #fffef0;
+}
+
+/* Category dropdown */
+.receipt-category-select {
+    background: transparent;
+    border: none;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: #888;
+    padding: 0;
+    margin: 0;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.receipt-category-select:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.receipt-category-select:focus {
+    outline: none;
+    background: #fffef0;
+    color: #333;
 }
 
 /* Receipt footer - fixed */

@@ -32,9 +32,13 @@
             <% transactions.forEach((transaction, index) => { %>
             <div class="receipt-item" data-transaction-id="<%= transaction.id %>">
                 <div class="receipt-item-left">
-                    <div class="receipt-item-name">
-                        <%= transaction.description %>
-                    </div>
+                    <!-- Editable description -->
+                    <input type="text" 
+                           class="receipt-description-edit"
+                           value="<%= transaction.description %>"
+                           onblur="updateDescription('<%= transaction.id %>', this.value)"
+                           placeholder="Enter description...">
+                    
                     <div class="receipt-item-details">
                         <%= transaction.formattedDate %> 
                         <% if (transaction.merchant) { %>
@@ -48,12 +52,19 @@
                         <span class="receipt-status <%= transaction.status %>">
                             <%= transaction.status %>
                         </span>
-                        <% if (transaction.category_id) { %>
-                            <% const category = categories.find(c => c.id === transaction.category_id); %>
-                            <% if (category) { %>
-                            | <%= category.name %>
-                            <% } %>
-                        <% } %>
+                        
+                        <!-- Category dropdown -->
+                        | <select class="receipt-category-select" 
+                                onchange="updateCategory('<%= transaction.id %>', this.value)">
+                            <option value="">NO CATEGORY</option>
+                            <% categories.forEach(category => { %>
+                            <option value="<%= category.id %>" 
+                                    <%= transaction.category_id === category.id ? 'selected' : '' %>>
+                                <%= category.name.toUpperCase() %>
+                            </option>
+                            <% }); %>
+                        </select>
+                        
                         <% if (transaction.receipt_url) { %>
                         | RECEIPT ATTACHED
                         <% } %>
@@ -135,6 +146,44 @@
             if (input.files.length > 0) {
                 uploadFile(input.files[0], transactionId);
             }
+        }
+
+        function updateDescription(transactionId, newDescription) {
+            fetch('/inbox/transaction/' + transactionId + '/description', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ description: newDescription })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) {
+                    console.error('Failed to update description');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating description:', error);
+            });
+        }
+
+        function updateCategory(transactionId, categoryId) {
+            fetch('/inbox/transaction/' + transactionId + '/category', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ categoryId: categoryId })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) {
+                    console.error('Failed to update category');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating category:', error);
+            });
         }
 
         function uploadFile(file, transactionId) {
